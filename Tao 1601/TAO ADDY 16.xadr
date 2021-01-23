@@ -1,0 +1,28 @@
+[Crestron_Toolbox_Address_Book]
+
+[Entries]
+This .xadr file was created using Toolbox v2.41 or later.=:slot 01
+It is not compatible with this version of Toolbox.=:slot 02
+Please open a .adr Address Book to continue.=:slot 03
+
+[AddressBookInfo]
+Schema=2.0
+Version=1.0
+DefaultEntry=
+
+[ComSpecs]
+PRO2=auto 192.168.0.100
+TP4500=PRO2:cresnet 55
+232=rs232 3,0,n,8,1,n,y
+CT1000=PRO2:cresnet 56
+New Entry 1=usb
+New Entry 2=New Entry 1:cresnet 29
+
+[Notes]
+PRO2=
+TP4500=
+232=
+CT1000=
+New Entry 1=
+New Entry 2=
+

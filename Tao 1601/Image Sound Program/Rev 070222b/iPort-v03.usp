@@ -1,0 +1,2868 @@
+ /*******************************************************************************************
+  SIMPL+ Module Information
+	iPort serial data retrieving
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer: Wojtek
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+#SYMBOL_NAME "iPort-v03"
+#HINT "iPort-v03 compleat module"
+
+#DEFINE_CONSTANT  delaytime 10
+#DEFINE_CONSTANT  cat_main 0
+#DEFINE_CONSTANT  cat_playlist 1
+#DEFINE_CONSTANT  cat_artist 2
+#DEFINE_CONSTANT  cat_album 3 
+#DEFINE_CONSTANT  cat_genre 4 
+#DEFINE_CONSTANT  cat_song 5
+#DEFINE_CONSTANT  cat_composer 6
+#DEFINE_CONSTANT  path_main 0
+#DEFINE_CONSTANT  path_playlist 1
+#DEFINE_CONSTANT  path_artist 2
+#DEFINE_CONSTANT  path_album 3 
+#DEFINE_CONSTANT  path_genre 4 
+#DEFINE_CONSTANT  path_song 5
+#DEFINE_CONSTANT  path_composer 6
+#DEFINE_CONSTANT  path_music 7
+
+
+ 
+// #CATEGORY "" 
+#DEFAULT_VOLATILE
+//#DEFAULT_NONVOLATILE
+#ENABLE_STACK_CHECKING
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional librarys as needed)
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+	DIGITAL_INPUT	menu,enter,play_pause,up,down,fast_up,fast_down,repeat,repeat_one,
+					repeat_all,repeat_off,shuffle,shuffle_songs,shuffle_albums,shuffle_off,
+					play,pause,stop,next_track,prev_track,ffwd,rew,slider_press,disable_notif,
+					play_on_dock,line1_press,line2_press,line3_press,line4_press,line5_press,
+					line6_press,line7_press,enter_rem_UI,exit_rem_UI;	
+ 
+	ANALOG_INPUT	slider_in,fast_num_of_rec;	
+
+ 
+// STRING_INPUT
+
+
+	BUFFER_INPUT	data_in$[1000]; 	
+
+
+	DIGITAL_OUTPUT	out_line1_fb,out_line2_fb,out_line3_fb,out_line4_fb,out_line5_fb,
+					out_line6_fb,out_line7_fb,play_fb,pause_fb,stop_fb,
+					repeat_one_fb,repeat_all_fb,repeat_off_fb,shuffle_songs_fb,
+					shuffle_albums_fb,shuffle_off_fb,player_fb,browse_fb,ipod_is_in,
+					ipod_is_out;
+ 	
+
+	ANALOG_OUTPUT	pl_song_index,num_pl_song,total_min,total_sec,total_in_sec,elaps_min,
+					elaps_sec,elaps_in_sec,remain_min,remain_sec,remain_in_sec,time_bar,
+					slider_fb; 	
+
+
+	STRING_OUTPUT	page_title$,out_line1$,out_line2$,out_line3$,out_line4$,
+					out_line5$,out_line6$,out_line7$,playing_album$,playing_title$,
+					playing_artist$,ipod_name$,out_to_iport$; 	  				
+
+
+	INTEGER			char_1,char_2,char_3,char_index,packet_lenght,curr_path,curr_category,
+					num_of_playlists,num_of_artists,num_of_albums,num_of_genres,num_of_songs,
+					num_of_composers,song_position_b4,song_position_b3,
+					song_position_b2,song_position_b1,song_lenght_b4,song_lenght_b3,
+					song_lenght_b2,song_lenght_b1,analize_in_progres,rec_car_ind_flag,
+					notif_on_flag,ffwd_from_next_flag,rew_from_prev_flag,RxOk,
+					update_player_flag,index_change_flag,
+
+					retr_flag; 		
+
+
+	LONG_INTEGER	main_index,playlist_index,artist_index,album_index,song_index,genre_index,
+					composer_index,curr_index,prev_curr_index,curr_index_disp,prev_index_disp,
+					disp_index,curr_ind_low_lim,curr_ind_up_lim,elaps_time_ms,total_time_ms,
+					remain_time_ms,fast_n_o_r;
+					
+ 
+	STRING			temp$[1000],page_title_buf$[50],title_playlist$[50],title_artist$[50],
+					title_album$[50],title_genre$[50],title_composer$[50],out_line1_buf$[50],
+					out_line2_buf$[50],out_line3_buf$[50],out_line4_buf$[50],out_line5_buf$[50],
+					out_line6_buf$[50],out_line7_buf$[50];			
+
+
+
+/*******************************************************************************************
+
+start condition:		ok
+          
+*******************************************************************************************/
+                                            
+Function Main()
+
+	{
+
+	page_title$ = "Music";
+	out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+	out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+	out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+	out_line4_buf$ = "Songs" ; out_line4$ = out_line4_buf$;
+	out_line5_buf$ = "Genres" ; out_line5$ = out_line5_buf$;
+	out_line6_buf$ = "Composers" ; out_line6$ = out_line6_buf$;
+	out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+
+						 chr(0x2A)+chr(0x16);							//reset_db_selection
+	data_in$ = "";
+	char_1 = 0;
+	char_2 = 0;
+	char_3 = 0;
+	packet_lenght = 10;
+	main_index = 0;
+	playlist_index = 1;
+	artist_index = -1;
+	album_index = -1;
+	song_index = 0;
+	genre_index = -1;
+	composer_index = -1;
+	disp_index = 0;
+	curr_category = 0;
+	curr_index = 0;
+	curr_ind_up_lim = 5;
+	stop_fb = 1;
+	browse_fb = 1;
+	player_fb = 0;
+	repeat_one_fb = 0;
+	repeat_all_fb = 0;
+	repeat_off_fb = 1;
+	shuffle_songs_fb = 0;
+	shuffle_albums_fb = 0;
+	shuffle_off_fb = 1;
+	out_line1_fb = 1;													//update disp fb
+	out_line2_fb = 0;
+	out_line3_fb = 0;
+	out_line4_fb = 0;
+	out_line5_fb = 0;
+	out_line6_fb = 0;
+	out_line7_fb = 0;
+	slider_fb = 65535;
+	total_sec = 1;
+	ipod_is_in = 0;
+	ipod_is_out = 1;
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x15)
+					+chr(0x02)+chr(0x28);		//transport stop
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x12)
+					+chr(0x00)+chr(0x2D);		//shuffle off
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x0D)
+					+chr(0x00)+chr(0x32);		//repeat off
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x28)
+					+chr(0x18);					//get ipod name
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x10)
+					+chr(0x30);					//get shuffle
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x13)
+					+chr(0x2D);					//get repeat
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x20)
+					+chr(0x20);					//get play status
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x4D)+chr(0x00)+chr(0x04)+chr(0x01)+chr(0x00)+chr(0x06)
+					+chr(0x00)+chr(0xA8);		//get dock status
+	processlogic();
+	}
+
+
+
+/*******************************************************************************************
+
+reset db selection:		ok
+          
+*******************************************************************************************/
+
+Function reset_db_selection()
+
+	{
+	STRING	reset_db_sel$[10];
+/*
+	reset_db_sel$ = chr(0xFF)+chr(0x55)+chr(0x03)+chr(0x04)+chr(0x00)+chr(0x16)+
+						 chr(0xE3);												//iPod code
+	out_to_iport$ = reset_db_sel$;
+*/
+	reset_db_sel$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+
+						 chr(0x2A)+chr(0x16);									//sonance code
+	out_to_iport$ = reset_db_sel$;
+/*	if(0)																		//wait declarations
+		{
+		wait (1000, player_wait);
+		wait (1000, player_wait_main);
+        }*/
+
+	}
+
+/*******************************************************************************************
+
+send shuffle:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_shuffle(INTEGER ssh_code)			//ssh_code:00=off,01=songs,02=albums
+	{
+	INTEGER	ssh_check_sum;
+	ssh_check_sum = 256 - ((0xBD+0x04+0x12+ssh_code) UMOD 256);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x12)
+					+chr(ssh_code)+chr(ssh_check_sum);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x10)
+					+chr(0x30);					//get shuffle
+	}
+
+
+/*******************************************************************************************
+
+send repeat:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_repeat(INTEGER srp_code)			//srp_code:00=off,01=one_track,02=all
+	{
+
+	INTEGER	srp_check_sum;
+
+	srp_check_sum = 256 - ((0xBD+0x04+0x0D+srp_code) UMOD 256);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x0D)
+					+chr(srp_code)+chr(srp_check_sum);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x13)
+					+chr(0x2D);					//get repeat
+	}
+
+/*******************************************************************************************
+
+send get ipod name:		ok
+          
+*******************************************************************************************/
+
+FUNCTION send_get_ipod_name()
+
+	{
+	STRING	get_ipod_name$[10];
+
+	get_ipod_name$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+
+						 chr(0x28)+chr(0x18);
+	out_to_iport$ = get_ipod_name$;
+	}
+
+
+/*******************************************************************************************
+
+page title from line(curr display)$:		ok
+          
+*******************************************************************************************/
+
+
+
+FUNCTION page_title_from_line$()
+
+	{
+	if (curr_index = -1)
+		{
+		switch (curr_category)
+			{
+			case(cat_artist) : {page_title_buf$ = "All Albums" ; page_title$ = page_title_buf$;}
+			case(cat_album) : {page_title_buf$ = "All Songs" ; page_title$ = page_title_buf$;}
+			case(cat_genre) : {page_title_buf$ = "All Artists" ; page_title$ = page_title_buf$;}
+			case(cat_composer) : {page_title_buf$ = "All Albums" ; page_title$ = page_title_buf$;}
+			}
+		}
+	else
+		{
+		switch (disp_index)
+			{
+			case(0):
+				{
+				page_title_buf$ = out_line1_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(1):
+				{
+				page_title_buf$ = out_line2_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(2):
+				{
+				page_title_buf$ = out_line3_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(3):
+				{
+				page_title_buf$ = out_line4_buf$;
+				page_title$ = page_title_buf$;
+				}		
+			case(4):
+				{
+				page_title_buf$ = out_line5_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(5):
+				{
+				page_title_buf$ = out_line6_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(6):
+				{
+				page_title_buf$ = out_line7_buf$;
+				page_title$ = page_title_buf$;
+				}
+			}
+		};
+	switch (curr_category)
+		{
+		case(cat_playlist) : title_playlist$ = page_title_buf$;
+		case(cat_artist) : title_artist$ = page_title_buf$;
+		case(cat_album) : title_album$ = page_title_buf$;
+		case(cat_genre) : title_genre$ = page_title_buf$;
+		case(cat_composer) : title_composer$ = page_title_buf$;
+		};
+	}
+
+
+
+/*******************************************************************************************
+
+send play current selection:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_play_cur_sel()
+	{
+
+	INTEGER	spcs_index_display_b1,spcs_index_display_b2,spcs_index_display_b3,spcs_index_display_b4,
+			spcs_check_sum;
+
+	if ((curr_category <> cat_main)&&(curr_category <> cat_song))
+		{
+		spcs_index_display_b4 = 0;
+		spcs_index_display_b3 = 0;
+		spcs_index_display_b2 = 0;
+		spcs_index_display_b1 = 0;
+		}
+	else
+		{
+		spcs_index_display_b4 = ((curr_index) / 65536)/ 256;
+		spcs_index_display_b3 = ((curr_index) / 65536) UMOD 256;
+		spcs_index_display_b2 = ((curr_index) UMOD 65536)/ 256;
+		spcs_index_display_b1 = ((curr_index) UMOD 65536) UMOD 256;
+		};
+	spcs_check_sum = 256 - ((0xBD+0x07+0x14+spcs_index_display_b4+spcs_index_display_b3
+					+spcs_index_display_b2+spcs_index_display_b1) UMOD 256);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x07)+chr(0x38)+chr(0x3C)+chr(0x14)
+					+chr(spcs_index_display_b4)+chr(spcs_index_display_b3)
+					+chr(spcs_index_display_b2)+chr(spcs_index_display_b1)+chr(spcs_check_sum);
+	}
+
+
+/*******************************************************************************************
+
+clear display line 1-7:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION clear_display ()
+	{
+	out_line1$ = "" ;
+	out_line2$ = "" ;
+	out_line3$ = "" ;
+	out_line4$ = "" ;
+	out_line5$ = "" ;
+	out_line6$ = "" ;
+	out_line7$ = "" ;
+	}
+
+
+/*******************************************************************************************
+
+send retrieve categorized db record:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_retr_recs (LONG_INTEGER srr_start_index)
+ 
+	{
+
+	INTEGER		srr_index_display_b1,srr_index_display_b2,srr_index_display_b3,
+				srr_index_display_b4,srr_num_of_rec,srr_check_sum;
+
+	STRING		srr_retr_cat_db_rec$[20];
+
+
+	if((srr_start_index + 7) > curr_ind_up_lim)
+		{
+		srr_num_of_rec = curr_ind_up_lim - srr_start_index + 1;
+		}
+	else srr_num_of_rec = 7;
+	srr_index_display_b4 = ((srr_start_index) / 65536)/ 256;
+	srr_index_display_b3 = ((srr_start_index) / 65536) UMOD 256;
+	srr_index_display_b2 = ((srr_start_index) UMOD 65536)/ 256;
+	srr_index_display_b1 = ((srr_start_index) UMOD 65536) UMOD 256;
+	srr_check_sum = 256 - ((0xBD+0x0C+0x26+curr_category+srr_index_display_b4
+					+srr_index_display_b3+srr_index_display_b2+srr_index_display_b1
+					+srr_num_of_rec) UMOD 256);
+	srr_retr_cat_db_rec$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x0C)+chr(0x38)+chr(0x3C)
+						+chr(0x26)+chr(curr_category)+chr(srr_index_display_b4)
+						+chr(srr_index_display_b3)+chr(srr_index_display_b2)
+						+chr(srr_index_display_b1)+chr(0x00)+chr(0x00)+chr(0x00)
+						+chr(srr_num_of_rec)+chr(srr_check_sum);
+	out_to_iport$ = srr_retr_cat_db_rec$;
+
+	}
+
+
+/*******************************************************************************************
+
+update display index and records:		ok
+          
+*******************************************************************************************/
+
+FUNCTION update_dis_ind_rec()
+
+	{
+	disp_index = (curr_index - curr_ind_low_lim) UMOD 7;					//update disp index
+	if (((curr_index - curr_ind_low_lim) S< prev_index_disp)||
+		((curr_index - curr_ind_low_lim) S> (prev_index_disp + 6)))
+		{
+		switch (curr_category)
+			{
+			case(cat_song):
+				{
+				call clear_display();
+				call send_retr_recs (curr_index_disp);
+				}
+			case(cat_playlist):
+				{
+				call clear_display();
+				call send_retr_recs (curr_index_disp + 1);
+				}
+			case(cat_artist):
+				{
+				call clear_display();
+				if(curr_index < 6)
+					{
+					call send_retr_recs (curr_index_disp);
+					}
+				else
+					{
+					call send_retr_recs (curr_index_disp -1);
+					};
+				}
+			case(cat_album):
+				{
+				call clear_display();
+				if(curr_index < 6)
+					{
+					call send_retr_recs (curr_index_disp);
+					}
+				else
+					{
+					call send_retr_recs (curr_index_disp -1);
+					};
+				}
+			case(cat_genre):
+				{
+				call clear_display();
+				if(curr_index < 6)
+					{
+					call send_retr_recs (curr_index_disp);
+					}
+				else
+					{
+					call send_retr_recs (curr_index_disp -1);
+					};
+				}
+			case(cat_composer):
+				{
+				call clear_display();
+				if(curr_index < 6)
+					{
+					call send_retr_recs (curr_index_disp);
+					}
+				else
+					{
+					call send_retr_recs (curr_index_disp -1);
+					};
+				}
+			};
+		};
+	if ( (curr_category = cat_artist || curr_category = cat_album || curr_category = cat_genre ||
+	     curr_category = cat_composer) && (curr_index_disp = 0) )
+		{
+		out_line1_buf$ = "All" ; out_line1$ = out_line1_buf$;
+		};																//update disp records
+	out_line1_fb = 0;													//update disp fb
+	out_line2_fb = 0;
+	out_line3_fb = 0;
+	out_line4_fb = 0;
+	out_line5_fb = 0;
+	out_line6_fb = 0;
+	out_line7_fb = 0;
+	switch (disp_index)
+		{
+		case(0):
+			out_line1_fb = 1;
+		case(1):
+			out_line2_fb = 1;
+		case(2):
+			out_line3_fb = 1;
+		case(3):
+			out_line4_fb = 1;
+		case(4):
+			out_line5_fb = 1;
+		case(5):
+			out_line6_fb = 1;
+		case(6):
+			out_line7_fb = 1;
+		};
+	}
+
+
+
+/*******************************************************************************************
+
+update starting index display:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION update_curr_ind_disp()
+	{
+	prev_index_disp = curr_index_disp;
+	if (curr_category = cat_playlist)
+		{
+		if(curr_index S< 8) curr_index_disp = 0;
+		else curr_index_disp = ((curr_index - curr_ind_low_lim)/7)*7;
+		}
+	else curr_index_disp = ((curr_index - curr_ind_low_lim)/7)*7;
+	}
+
+
+/*******************************************************************************************
+
+send transport command:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_transport (INTEGER str_code) 
+	{
+
+	INTEGER	str_check_sum;
+
+	STRING	str_send_transport$[9];
+
+
+	str_check_sum = 256 - ((0xBD+0x04+0x15+str_code) UMOD 256);
+	str_send_transport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x15)
+						  +chr(str_code)+chr(str_check_sum);
+	out_to_iport$ = str_send_transport$;
+	}
+
+
+/*******************************************************************************************
+
+send get play status:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_get_play_status()
+	{
+
+	STRING 			gpst_get_play_status$[8];
+
+
+	gpst_get_play_status$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)
+							+chr(0x20)+chr(0x20);
+	out_to_iport$ = gpst_get_play_status$;
+	}
+
+
+/*******************************************************************************************
+
+send get num of playing song:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_get_num_pl_song()
+	{
+
+	STRING 			gnps_get_num_pl_song$[8];
+
+	gnps_get_num_pl_song$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)
+							+chr(0x09)+chr(0x37);
+	out_to_iport$ = gnps_get_num_pl_song$;
+	}
+
+
+/*******************************************************************************************
+
+send get playing song index:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_get_pl_song_index()
+	{
+
+	STRING 		get_pl_song_index$[8];
+
+
+	get_pl_song_index$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+
+						 chr(0x22)+chr(0x1E);
+	out_to_iport$ = get_pl_song_index$;
+	}
+
+
+/*******************************************************************************************
+
+send turn on notification:		ok
+          
+*******************************************************************************************/
+
+
+
+FUNCTION turn_on_notif()
+
+	{
+	STRING 		turn_on_notif$[9];
+
+
+	turn_on_notif$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+
+						 chr(0x1A)+chr(0x01)+chr(0x24);
+	out_to_iport$ = turn_on_notif$;
+	}
+
+/*******************************************************************************************
+
+send turn off notification:		ok
+          
+*******************************************************************************************/
+
+
+
+FUNCTION turn_off_notif()
+
+	{
+	STRING 		turn_off_notif$[9];
+
+
+	turn_off_notif$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+
+						 chr(0x1A)+chr(0x00)+chr(0x25);
+	out_to_iport$ = turn_off_notif$;
+	}
+
+
+
+/*******************************************************************************************
+
+send select DB record:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_sel_db_rec()
+	{
+    
+	STRING sel_db_rec$[50];
+
+	INTEGER ssdr_index_select_b1,ssdr_index_select_b2,ssdr_index_select_b3,
+			ssdr_index_select_b4,ssdr_check_sum;
+
+	ssdr_index_select_b4 = ((curr_index) / 65536) / 256;
+	ssdr_index_select_b3 = ((curr_index) / 65536) UMOD 256;
+	ssdr_index_select_b2 = ((curr_index) UMOD 65536) / 256;
+	ssdr_index_select_b1 = ((curr_index) UMOD 65536) UMOD 256;
+	ssdr_check_sum = 256 - ((0xBD+0x08+0x2B+curr_category+ssdr_index_select_b4
+				+ssdr_index_select_b3+ssdr_index_select_b2+ssdr_index_select_b1) UMOD 256);
+	sel_db_rec$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x08)+chr(0x38)+chr(0x3C)+chr(0x2B)
+					+chr(curr_category)+chr(ssdr_index_select_b4)+chr(ssdr_index_select_b3)
+					+chr(ssdr_index_select_b2)+chr(ssdr_index_select_b1)+chr(ssdr_check_sum);
+	out_to_iport$ = sel_db_rec$;
+	}
+
+
+
+/*******************************************************************************************
+
+send get number of categorized db records:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_get_num_cat_rec()
+
+	{
+	INTEGER 	sgncr_check_sum;
+	STRING 		sgncr_get_num_of_rec$[10];
+
+
+	sgncr_check_sum = 256 - ((0xBD+0x04+0x24+curr_category) UMOD 256);
+	sgncr_get_num_of_rec$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+
+						 chr(0x24)+chr(curr_category)+chr(sgncr_check_sum);
+	out_to_iport$ = sgncr_get_num_of_rec$;
+	}
+
+
+
+/*******************************************************************************************
+
+calculate song lenght:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION calc_song_lenght ()
+	{
+	total_time_ms = (256*song_lenght_b4+song_lenght_b3)*65536+(256*song_lenght_b2)
+					+song_lenght_b1;
+	total_min = total_time_ms/60000;
+	total_sec = (total_time_ms/1000) UMOD 60;
+	total_in_sec = total_time_ms/1000;
+	}
+
+
+
+/*******************************************************************************************
+
+calculate song position (elapse time, remain time, time bar):		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION calc_song_position ()
+	{
+	elaps_time_ms = (256*song_position_b4+song_position_b3)*65536+(256*song_position_b2)
+					+song_position_b1;
+	elaps_min = elaps_time_ms/60000;
+	elaps_sec = (elaps_time_ms/1000) UMOD 60;
+	elaps_in_sec = elaps_time_ms/1000;
+	remain_time_ms = total_time_ms - elaps_time_ms;
+	remain_min = remain_time_ms/60000;
+	remain_sec = (remain_time_ms/1000) UMOD 60;
+	remain_in_sec = remain_time_ms/1000;
+	time_bar = MULDIV((elaps_min*60+elaps_sec),65535,(total_min*60+total_sec+1));
+	}
+
+
+/*******************************************************************************************
+
+udate slider(after entrer,menu,up,down,slider_in):		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION update_slider ()
+	{
+
+INTEGER	curr_index_int,curr_ind_up_lim_int,curr_ind_low_lim_int,divisor;
+
+	curr_index_int = curr_index;
+	curr_ind_up_lim_int = curr_ind_up_lim;
+	curr_ind_low_lim_int = curr_ind_low_lim;
+	divisor = (curr_ind_up_lim_int-curr_ind_low_lim_int);
+	if (!divisor) divisor = 1;
+	switch (curr_category)
+		{
+		case(cat_main):
+		slider_fb = 65535 - (muldiv(curr_index,65535,divisor));
+		case(cat_song):
+		slider_fb = 65535 - (muldiv(curr_index,65535,divisor));
+		case(cat_playlist):
+		slider_fb = 65535 - (muldiv(curr_index-1,65535,divisor));
+		default:
+		slider_fb = 65535 - (muldiv(curr_index+1,65535,divisor));
+		}
+	}
+
+
+
+/*******************************************************************************************
+
+send update player data (playing song album, title, artist):		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION update_player_data ()
+
+	{
+	INTEGER gpsd_index_b1,gpsd_index_b2,gpsd_index_b3,
+			gpsd_index_b4,gpsd_check_sum;
+
+	STRING 			gpsd_get_pl_song_data$[12];
+
+	gpsd_index_b4 = ((pl_song_index-1) / 65536) / 256;
+	gpsd_index_b3 = ((pl_song_index-1) / 65536) UMOD 256;
+	gpsd_index_b2 = ((pl_song_index-1) UMOD 65536) / 256;
+	gpsd_index_b1 = ((pl_song_index-1) UMOD 65536) UMOD 256;
+	gpsd_check_sum = 256 - ((0xBD+0x07+0x1C+gpsd_index_b4+gpsd_index_b3+gpsd_index_b2
+					+gpsd_index_b1) UMOD 256);
+	gpsd_get_pl_song_data$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x07)+chr(0x38)+chr(0x3C)
+							+chr(0x1C)+chr(gpsd_index_b4)+chr(gpsd_index_b3)
+							+chr(gpsd_index_b2)+chr(gpsd_index_b1)+chr(gpsd_check_sum);
+	out_to_iport$ = gpsd_get_pl_song_data$;								//get title
+	delay(delaytime);
+	gpsd_check_sum = 256 - ((0xBD+0x07+0x1E+gpsd_index_b4+gpsd_index_b3+gpsd_index_b2
+					+gpsd_index_b1) UMOD 256);
+	gpsd_get_pl_song_data$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x07)+chr(0x38)+chr(0x3C)
+							+chr(0x1E)+chr(gpsd_index_b4)+chr(gpsd_index_b3)
+							+chr(gpsd_index_b2)+chr(gpsd_index_b1)+chr(gpsd_check_sum);
+	out_to_iport$ = gpsd_get_pl_song_data$;								//get artist
+	delay(delaytime);
+	gpsd_check_sum = 256 - ((0xBD+0x07+0x18+gpsd_index_b4+gpsd_index_b3+gpsd_index_b2
+					+gpsd_index_b1) UMOD 256);
+	gpsd_get_pl_song_data$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x07)+chr(0x38)+chr(0x3C)
+							+chr(0x18)+chr(gpsd_index_b4)+chr(gpsd_index_b3)
+							+chr(gpsd_index_b2)+chr(gpsd_index_b1)+chr(gpsd_check_sum);
+	out_to_iport$ = gpsd_get_pl_song_data$;								//get album
+	}
+
+
+
+/*******************************************************************************************
+
+activate player:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION activate_player ()
+
+	{
+	browse_fb = 0;
+	player_fb = 1;
+	if (!disable_notif) call turn_on_notif();
+	notif_on_flag = 1;
+	call send_get_num_pl_song();				//get number of playing songs
+	delay(delaytime);
+	call send_get_pl_song_index();				//get playing song index
+	delay(delaytime);
+	call update_player_data();				//get title, artist, album
+	delay(delaytime);
+	call send_get_play_status();				//update play status
+	}
+
+
+/*******************************************************************************************
+
+activate player from player wait:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION activate_player_from_wait ()
+
+	{
+	browse_fb = 0;
+	player_fb = 1;
+	if (!disable_notif) call turn_on_notif();
+	notif_on_flag = 1;
+	update_player_flag = 1;				//get title, artist, album, after updating curr index
+	call send_get_num_pl_song();				//get number of playing songs
+	delay(delaytime);
+	call send_get_pl_song_index();				//get playing song index
+	delay(delaytime);
+	call send_get_play_status();				//update play status
+	}
+
+
+/*******************************************************************************************
+
+activate browse:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION activate_browse ()
+
+	{
+	player_fb = 0;
+	browse_fb = 1;
+	if (curr_path = path_main)
+		{
+		curr_index = main_index;
+		curr_ind_up_lim = 5;
+		};
+	call turn_off_notif();
+	notif_on_flag = 0;
+	}
+
+/*******************************************************************************************
+
+select songs in alpfabetical order:		ok
+          
+*******************************************************************************************/
+/*
+
+FUNCTION select_sort_songs()
+
+	{
+
+	INTEGER	sssa_index_display_b1,sssa_index_display_b2,sssa_index_display_b3,
+			sssa_index_display_b4,sssa_check_sum;
+
+
+	sssa_index_display_b4 = ((curr_index) / 65536)/ 256;
+	sssa_index_display_b3 = ((curr_index) / 65536) UMOD 256;
+	sssa_index_display_b2 = ((curr_index) UMOD 65536)/ 256;
+	sssa_index_display_b1 = ((curr_index) UMOD 65536) UMOD 256;
+	sssa_check_sum = 256 - ((0xBD+0x09+0x04+0x05+sssa_index_display_b4+sssa_index_display_b3
+					+sssa_index_display_b2+sssa_index_display_b1+0x04) UMOD 256);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x09)+chr(0x38)+chr(0x3C)+chr(0x04)
+					+chr(0x05)+chr(sssa_index_display_b4)+chr(sssa_index_display_b3)
+					+chr(sssa_index_display_b2)+chr(sssa_index_display_b1)+chr(0x04)
+					+chr(sssa_check_sum);
+	}
+
+*/
+/*******************************************************************************************
+
+push/release disable notif:		ok
+          
+*******************************************************************************************/
+
+
+push disable_notif
+	{
+	if(notif_on_flag) call turn_off_notif();
+	}
+release disable_notif
+	{
+	if(notif_on_flag) call turn_on_notif();
+	}
+
+/*******************************************************************************************
+
+push menu:		ok
+          
+*******************************************************************************************/
+
+
+push menu
+
+	{
+	if (player_fb = 1)
+		{
+		call activate_browse();
+		if (play_fb = 1)
+			{
+			wait (1000, player_wait)
+				{
+				call activate_player_from_wait();
+				};
+			}
+		}
+	else
+		{
+		if (curr_category <> cat_main) call clear_display();
+		switch(curr_category)
+			{
+			case(cat_playlist):
+				{
+				playlist_index = curr_index;
+				page_title$ = "Music";
+				out_line1$ = "Playlists";
+				out_line2$ = "Artists";
+				out_line3$ = "Albums";
+				out_line4$ = "Songs";
+				out_line5$ = "Genres";
+				out_line6$ = "Composers";
+				out_line7$ = "";
+				curr_category = cat_main;
+				curr_index = main_index;
+				curr_ind_low_lim = 0;
+				curr_ind_up_lim = 5;
+				}
+			case(cat_artist):
+				{
+				switch(curr_path)
+					{
+					case(path_artist):
+						{
+						artist_index = curr_index;
+						page_title$ = "Music";
+						out_line1$ = "Playlists";
+						out_line2$ = "Artists";
+						out_line3$ = "Albums";
+						out_line4$ = "Songs";
+						out_line5$ = "Genres";
+						out_line6$ = "Composers";
+						out_line7$ = "";
+						curr_category = cat_main;
+						curr_index = main_index;
+						curr_ind_low_lim = 0;
+						curr_ind_up_lim = 5;
+						}
+					case(path_genre):
+						{
+						artist_index = curr_index;
+						page_title$ = "Genres";
+						curr_category = cat_genre;
+						curr_index = genre_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_genres;
+						call update_curr_ind_disp();
+						if(curr_index S< 6)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+	                }
+				}
+			case(cat_album):
+				{
+				switch(curr_path)
+					{
+					case(path_artist):
+						{
+						album_index = curr_index;
+						page_title$ = "Artists";
+						curr_category = cat_artist;
+						curr_index = artist_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_artists;
+						call update_curr_ind_disp();
+						if(curr_index S< 6)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+					case(path_album):
+						{
+						album_index = curr_index;
+						page_title$ = "Music";
+						out_line1$ = "Playlists";
+						out_line2$ = "Artists";
+						out_line3$ = "Albums";
+						out_line4$ = "Songs";
+						out_line5$ = "Genres";
+						out_line6$ = "Composers";
+						out_line7$ = "";
+						curr_category = cat_main;
+						curr_index = main_index;
+						curr_ind_low_lim = 0;
+						curr_ind_up_lim = 5;
+						}
+					case(path_genre):
+						{
+						album_index = curr_index;
+						page_title$ = title_genre$;
+						curr_category = cat_artist;
+						curr_index = artist_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_artists;
+						call update_curr_ind_disp();
+						if(curr_index S< 6)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+					case(path_composer):
+						{
+						album_index = curr_index;
+						page_title$ = "Composers";
+						curr_category = cat_composer;
+						curr_index = composer_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_composers;
+						call update_curr_ind_disp();
+						if(curr_index S< 6)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+	                }
+				}
+			case(cat_song):
+				{
+				switch(curr_path)
+					{
+					case(path_playlist):
+						{
+						song_index = curr_index;
+						page_title$ = "Playlists";
+						curr_category = cat_playlist;
+						curr_index = playlist_index;
+						curr_ind_low_lim = 1;
+						curr_ind_up_lim = num_of_playlists;
+						if(curr_index S< 8) curr_index_disp = 0;
+						else call update_curr_ind_disp();
+						call send_retr_recs (curr_index_disp + 1);
+						}
+					case(path_artist):
+						{
+						song_index = curr_index;
+						page_title$ = title_artist$;
+						curr_category = cat_album;
+						curr_index = album_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_albums;
+						call update_curr_ind_disp();
+						if(curr_index S< 6)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+					case(path_album):
+						{
+						song_index = curr_index;
+						page_title$ = "Albums";
+						curr_category = cat_album;
+						curr_index = album_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_albums;
+						call update_curr_ind_disp();
+						if(curr_index S< 6)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+					case(path_song):
+						{
+						song_index = curr_index;
+						page_title$ = "Music";
+						out_line1$ = "Playlists";
+						out_line2$ = "Artists";
+						out_line3$ = "Albums";
+						out_line4$ = "Songs";
+						out_line5$ = "Genres";
+						out_line6$ = "Composers";
+						out_line7$ = "";
+						curr_category = cat_main;
+						curr_index = main_index;
+						curr_ind_low_lim = 0;
+						curr_ind_up_lim = 5;
+						}
+					case(path_genre):
+						{
+						song_index = curr_index;
+						page_title$ = title_artist$;
+						curr_category = cat_album;
+						curr_index = album_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_albums;
+						call update_curr_ind_disp();
+						if(curr_index S< 6)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+					case(path_composer):
+						{
+						song_index = curr_index;
+						page_title$ = title_composer$;
+						curr_category = cat_album;
+						curr_index = album_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_albums;
+						call update_curr_ind_disp();
+						if(curr_index S< 6)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+	                }
+				}
+			case(cat_genre):
+				{
+				genre_index = curr_index;
+				page_title$ = "Music";
+				out_line1$ = "Playlists";
+				out_line2$ = "Artists";
+				out_line3$ = "Albums";
+				out_line4$ = "Songs";
+				out_line5$ = "Genres";
+				out_line6$ = "Composers";
+				out_line7$ = "";
+				curr_category = cat_main;
+				curr_index = main_index;
+				curr_ind_low_lim = 0;
+				curr_ind_up_lim = 5;
+				}
+			case(cat_composer):
+				{
+				composer_index = curr_index;
+				page_title$ = "Music";
+				out_line1$ = "Playlists";
+				out_line2$ = "Artists";
+				out_line3$ = "Albums";
+				out_line4$ = "Songs";
+				out_line5$ = "Genres";
+				out_line6$ = "Composers";
+				out_line7$ = "";
+				curr_category = cat_main;
+				curr_index = main_index;
+				curr_ind_low_lim = 0;
+				curr_ind_up_lim = 5;
+				}
+			}
+		}
+	if (play_fb = 1)
+		{
+		retimewait (1000, player_wait);
+		};
+	call update_slider();
+	call update_dis_ind_rec();
+	index_change_flag = 0;
+	}
+
+
+/*******************************************************************************************
+
+push enter:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION enter_pressed ()
+
+	{	
+	if (play_fb = 1)
+		{
+		retimewait (1000, player_wait);
+		};
+	switch(curr_category)
+		{
+		case(cat_main):
+			{
+			call clear_display();
+			switch(main_index)
+				{
+				case(0):							//playlists
+					{
+					curr_path = path_playlist;
+					page_title$ = "Playlists";
+					curr_category = cat_playlist;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};						
+					curr_ind_low_lim = 1;
+					curr_index = playlist_index;
+					call update_curr_ind_disp();
+					retr_flag = 3;					//ret num cat rec will send retr(ind dis+1)
+					call send_get_num_cat_rec();	//will ret curr_up_lim +  6 num_of_***
+					}
+				case(1):							//artists
+					{
+					curr_path = path_artist;
+					page_title$ = "Artists";
+					curr_category = cat_artist;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = -1;
+					curr_index = artist_index;
+					call update_curr_ind_disp();
+					if(curr_index S< 6)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();
+					}
+				case(2):							//albums
+					{
+					curr_path = path_album;
+					page_title$ = "Albums";
+					curr_category = cat_album;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = -1;
+					curr_index = album_index;
+					call update_curr_ind_disp();
+					if(curr_index S< 6)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();
+					}
+				case(3):							//songs
+					{
+					curr_path = path_song;
+					page_title$ = "Songs";
+					curr_category = cat_song;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = 0;
+					curr_index = song_index;
+					call update_curr_ind_disp();
+					retr_flag = 2;					//ret num cat rec will send retr(ind dis)
+					call send_get_num_cat_rec();
+					}
+				case(4):							//genres
+					{
+					curr_path = path_genre;
+					page_title$ = "Genres";
+					curr_category = cat_genre;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = -1;
+					curr_index = genre_index;
+					call update_curr_ind_disp();
+					if(curr_index S< 6)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();
+					}
+				case(5):							//composers
+					{
+					curr_path = path_composer;
+					page_title$ = "Composers";
+					curr_category = cat_composer;;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = -1;
+					curr_index = composer_index;
+					call update_curr_ind_disp();
+					if(curr_index S< 6)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();
+					}
+
+				};
+			}
+		case(cat_playlist):
+			{
+			call page_title_from_line$();			//gives page_title + title_***
+			call clear_display();
+			call send_sel_db_rec();
+			curr_category = cat_song;
+			if ((prev_curr_index <> curr_index)&&(index_change_flag))
+				{
+				song_index = 0;
+				index_change_flag = 0;
+				};
+			curr_index = song_index;
+			curr_ind_low_lim = 0;
+			call update_curr_ind_disp();
+			retr_flag = 2;							//ret num cat rec will send retr(ind dis)
+			call send_get_num_cat_rec();			//gives curr_ind_up_lim + ***_index
+			}
+		case(cat_artist):
+			{
+			call page_title_from_line$();
+			call clear_display();
+			call send_sel_db_rec();
+			curr_category = cat_album;
+			if ((prev_curr_index <> curr_index)&&(index_change_flag))
+				{
+				album_index = -1;
+				song_index = 0;
+				index_change_flag = 0;
+				};
+			curr_index = album_index;
+			curr_ind_low_lim = -1;
+			call update_curr_ind_disp();
+			if(curr_index S< 6)
+				{
+				retr_flag = 2;					//ret num cat rec will send retr(ind dis)
+				}
+			else
+				{
+				retr_flag = 1;						//ret num cat rec will send retr(ind dis-1)
+				};
+			call send_get_num_cat_rec();
+			}
+		case(cat_album):
+			{
+			call page_title_from_line$();
+			call clear_display();
+			call send_sel_db_rec();
+			curr_category = cat_song;
+			if ((prev_curr_index <> curr_index)&&(index_change_flag))
+				{
+				song_index = 0;
+				index_change_flag = 0;
+				};
+			curr_index = song_index;
+			curr_ind_low_lim = 0;
+			call update_curr_ind_disp();
+			retr_flag = 2;							//ret num cat rec will send retr(ind dis)
+			call send_get_num_cat_rec();
+			}
+		case(cat_song):
+			{
+			call send_play_cur_sel();
+			delay(delaytime);
+			call send_get_play_status();
+			delay(delaytime);
+			call activate_player();
+			}
+		case(cat_genre):
+			{
+			call page_title_from_line$();
+			call clear_display();
+			call send_sel_db_rec();
+			curr_category = cat_artist;
+			if ((prev_curr_index <> curr_index)&&(index_change_flag))
+				{
+				artist_index = -1;
+				album_index = -1;
+				song_index = 0;
+				index_change_flag = 0;
+				};
+			curr_index = artist_index;
+			curr_ind_low_lim = -1;
+			call update_curr_ind_disp();
+			if(curr_index S< 6)
+				{
+				retr_flag = 2;						//ret num cat rec will send retr(ind dis)
+				}
+			else
+				{
+				retr_flag = 1;						//ret num cat rec will send retr(ind dis-1)
+				};
+			call send_get_num_cat_rec();
+			}
+		case(cat_composer):
+			{
+			call page_title_from_line$();
+			call clear_display();
+			call send_sel_db_rec();
+			curr_category = cat_album;
+			if ((prev_curr_index <> curr_index)&&(index_change_flag))
+				{
+				album_index = -1;
+				song_index = 0;
+				index_change_flag = 0;
+				};
+			curr_index = album_index;
+			curr_ind_low_lim = -1;
+			call update_curr_ind_disp();
+			if(curr_index S< 6)
+				{
+				retr_flag = 2;						//ret num cat rec will send retr(ind dis)
+				}
+			else
+				{
+				retr_flag = 1;						//ret num cat rec will send retr(ind dis-1)
+				};
+			call send_get_num_cat_rec();
+			}
+		};
+	call update_slider();
+	call update_dis_ind_rec();
+	prev_curr_index = curr_index;
+	}
+
+
+
+push enter
+
+	{
+	call enter_pressed ();
+	}
+
+
+/*******************************************************************************************
+
+line1 to line7 presses:			ok
+          
+*******************************************************************************************/
+
+push line1_press
+	{
+	if((!index_change_flag)&&(curr_index<>disp_index))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	curr_index = (curr_index - disp_index);
+	switch (curr_category)
+		{
+		case(cat_main) : main_index = curr_index;
+		case(cat_playlist) : playlist_index = curr_index;
+		case(cat_artist) : artist_index = curr_index;
+		case(cat_album) : album_index = curr_index;
+		case(cat_genre) : genre_index = curr_index;
+		case(cat_song) : song_index = curr_index;
+		case(cat_composer) : composer_index = curr_index;
+		};
+	disp_index = (curr_index - curr_ind_low_lim) UMOD 7;
+	call enter_pressed ();
+	}
+
+push line2_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+1)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 1) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 1);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD 7;
+		call enter_pressed ();
+		}
+	}
+
+push line3_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+2)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 2) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 2);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD 7;
+		call enter_pressed ();
+		}
+	}
+
+push line4_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+3)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 3) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 3);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD 7;
+		call enter_pressed ();
+		}
+	}
+
+push line5_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+4)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 4) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 4);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD 7;
+		call enter_pressed ();
+		}
+	}
+
+push line6_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+5)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 5) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 5);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD 7;
+		call enter_pressed ();
+		}
+	}
+
+push line7_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+6)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 6) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 6);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD 7;
+		call enter_pressed ();
+		}
+	}
+
+
+
+
+/*******************************************************************************************
+
+transport commands:			ok
+          
+*******************************************************************************************/
+
+
+
+push play_pause
+	{
+	switch (play_fb)
+		{
+		case(0):
+			{
+			if(curr_category = 0)
+				{
+				call send_transport (0x01);					//send toggle play/pause
+				delay(delaytime);
+				call send_get_play_status();
+				wait (1000, player_wait_main)
+					{
+					call activate_player_from_wait();
+					};
+				}
+			else
+				{
+				if(player_fb = 1)
+					{
+					call send_transport (0x01);				//send toggle play/pause
+					call send_get_play_status();
+					}
+				else
+					{
+					cancelwait (player_wait);
+					delay(delaytime);
+					cancelwait (player_wait_main);
+					call send_sel_db_rec();
+					delay(delaytime);
+					call send_play_cur_sel();
+					delay(delaytime);
+					call send_get_play_status();
+					delay(delaytime);
+					call activate_player();
+					}
+				}
+			}
+		case(1):
+			{
+			cancelwait (player_wait);
+			cancelwait (player_wait_main);
+			call send_transport (0x01);						//send toggle play/pause
+			delay(delaytime);
+			call send_get_play_status();
+			}
+		}
+	}
+
+push play
+	{
+	cancelwait (player_wait);
+	cancelwait (player_wait_main);
+	if(play_fb = 0)
+		{
+		call send_play_cur_sel();
+		delay(delaytime);
+		call send_get_play_status();
+		delay(delaytime);
+		call activate_player();
+		};
+	}
+
+push pause
+	{
+	if(play_fb = 1)
+		{
+		call send_transport (0x01);
+		delay(delaytime);
+		call send_get_play_status();
+		cancelwait (player_wait);
+		cancelwait (player_wait_main);
+		};
+	}
+
+push stop
+	{
+	call send_transport (0x02);
+	cancelwait (player_wait);
+	cancelwait (player_wait_main);
+	}
+
+push next_track
+	{
+	wait (100, next_wait)
+		{
+		if(next_track)
+			{
+			call send_transport (0x05);		//ffwd on
+			ffwd_from_next_flag = 1;
+			}
+		}
+	}
+release next_track
+	{
+	if(ffwd_from_next_flag)
+		{
+		call send_transport (0x07);			//ffwd off
+		ffwd_from_next_flag = 0;
+		}
+	else
+		{
+		call send_transport (0x03);			//next track
+		cancelwait(next_wait);
+		}
+	}
+
+push prev_track
+	{
+	wait (100, prev_wait)
+		{
+		if(prev_track)
+			{
+			call send_transport (0x06);		//rew on
+			rew_from_prev_flag = 1;
+			}
+		}
+	}
+release prev_track
+	{
+	if(rew_from_prev_flag)
+		{
+		call send_transport (0x07);			//rew off
+		rew_from_prev_flag = 0;
+		}
+	else
+		{
+		call send_transport (0x04);			//prev track
+		cancelwait(prev_wait);
+		}
+	}
+
+push ffwd
+	{
+	call send_transport (0x05);
+	}
+
+push rew
+	{
+	call send_transport (0x06);
+	}
+
+release ffwd
+	{
+	call send_transport (0x07);
+	}
+
+release rew
+	{
+	call send_transport (0x07);
+	}
+
+
+
+/*******************************************************************************************
+
+translate from utf8:		ok
+          
+*******************************************************************************************/
+
+INTEGER_FUNCTION translate_utf8 (INTEGER tutf_rec_char_next)
+
+
+	{
+	switch (tutf_rec_char_next)						//translation from utf8
+		{
+		case(226):
+			{
+			rec_car_ind_flag = 1;					//skip this character
+			}
+		case(153):
+			{
+			rec_car_ind_flag = 1;					//skip this character
+			}
+		case(195):
+			{
+			rec_car_ind_flag = 1;					//skip this character
+			}
+		case(128):tutf_rec_char_next = 39;			//change character
+		case(188):tutf_rec_char_next = 252;			//change character
+		};
+	return (tutf_rec_char_next);
+	}
+
+/*******************************************************************************************
+
+ipod docked:		ok
+          
+*******************************************************************************************/
+                                            
+Function ipod_docked()
+
+	{
+
+	page_title$ = "Music";
+	out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+	out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+	out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+	out_line4_buf$ = "Songs" ; out_line4$ = out_line4_buf$;
+	out_line5_buf$ = "Genres" ; out_line5$ = out_line5_buf$;
+	out_line6_buf$ = "Composers" ; out_line6$ = out_line6_buf$;
+	out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+	data_in$ = "";
+	char_1 = 0;
+	char_2 = 0;
+	char_3 = 0;
+	packet_lenght = 10;
+	main_index = 0;
+	playlist_index = 1;
+	artist_index = -1;
+	album_index = -1;
+	song_index = 0;
+	genre_index = -1;
+	composer_index = -1;
+	disp_index = 0;
+	curr_category = 0;
+	curr_index = 0;
+	curr_ind_low_lim = 0;
+	curr_ind_up_lim = 5;
+	stop_fb = 1;
+	browse_fb = 1;
+	player_fb = 0;
+	out_line1_fb = 1;													//update disp fb
+	out_line2_fb = 0;
+	out_line3_fb = 0;
+	out_line4_fb = 0;
+	out_line5_fb = 0;
+	out_line6_fb = 0;
+	out_line7_fb = 0;
+	slider_fb = 65535;
+	total_sec = 1;
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x28)
+					+chr(0x18);					//get ipod name
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x10)
+					+chr(0x30);					//get shuffle
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x13)
+					+chr(0x2D);					//get repeat
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x20)
+					+chr(0x20);					//get play status
+	ipod_is_in = 1;
+	ipod_is_out = 0;
+	call reset_db_selection();
+	if (play_on_dock)
+		{
+		cancelwait (player_wait);
+		cancelwait (player_wait_main);
+		call send_transport (0x01);				//play/pause 
+		delay(delaytime);
+		call activate_player();
+		delay(delaytime);
+		call send_get_play_status();
+		}
+	//if (!play_on_dock) call reset_db_selection();
+	}
+
+
+/*******************************************************************************************
+
+analize incoming parsed data:		ok
+          
+*******************************************************************************************/
+
+FUNCTION analize_inc_data (STRING data_to_process$)						// retrieve record name from complite string
+	{
+
+	INTEGER 		rec_char1,rec_char2,rec_char4,rec_char6,rec_char7,rec_char8,rec_char9,
+					rec_char_next,rec_char_index,index_from_rec_b1,index_from_rec_b2,
+					index_from_rec_b3,index_from_rec_b4,rec_lenght,pl_song_index_b4,
+					pl_song_index_b3,pl_song_index_b2,pl_song_index_b1,num_pl_song_b4,
+					num_pl_song_b3,num_pl_song_b2,num_pl_song_b1,player_status,
+					player_state_code,num_cat_rec,num_cat_rec_b1,num_cat_rec_b2,num_cat_rec_b3,
+					num_cat_rec_b4,repeat_code,shuffle_code,ack_char;
+
+	LONG_INTEGER	index_from_rec;
+
+	STRING 			temp_line_out$[100];
+
+		analize_in_progres = 1;
+		rec_char1 = getc(data_to_process$);
+		rec_char2 = getc(data_to_process$);
+		rec_char4 = getc(data_to_process$);						// skip packet lenght high byte
+		rec_char4 = getc(data_to_process$);
+		rec_char6 = getc(data_to_process$);						// skip packet command type byte
+		rec_char6 = getc(data_to_process$);
+		rec_char7 = getc(data_to_process$);
+		if (rec_char1 = 0x2A && rec_char2 = 0x4D && rec_char6 = 0x00)
+			{
+			rec_char8 = getc(data_to_process$);
+			rec_char9 = getc(data_to_process$);
+			if(rec_char7 = 0x06 && rec_char8 = 0x00) 
+				{
+				ipod_is_in = 0;
+				ipod_is_out = 1;
+				player_fb = 0;
+				browse_fb = 0;
+				};
+			if(rec_char7 = 0x06 && rec_char8 = 0x01) 
+				{
+				ipod_is_in = 1;
+				ipod_is_out = 0;
+				};
+			}
+		if (rec_char1 = 0x2A && rec_char2 = 0x49 && rec_char6 = 0x3C)
+			{
+			rec_lenght = rec_char4;
+			switch (rec_char7)
+				{
+				case (0x27):										// returned cat db record
+					{
+					index_from_rec_b4 = getc(data_to_process$);
+					index_from_rec_b3 = getc(data_to_process$);
+					index_from_rec_b2 = getc(data_to_process$);
+					index_from_rec_b1 = getc(data_to_process$);
+					index_from_rec = (256 * index_from_rec_b4 + index_from_rec_b3)*65536
+									+256 * index_from_rec_b2 + index_from_rec_b1;//prepare index of the rec to compare
+					temp_line_out$ = "";							//clear temp string
+					rec_char_index = 11;
+					do
+						{
+						rec_char_next = getc(data_to_process$);
+						if (!rec_char_next) break;
+						rec_char_next =  translate_utf8(rec_char_next);
+						rec_char_index = rec_char_index + 1;
+						if(!rec_car_ind_flag)
+							{
+							temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+							}
+						rec_car_ind_flag = 0;
+						}
+					until ((rec_char_index = rec_lenght + 3)||(rec_char_index = 39));//retrieve rec name (no longer than 28 char)
+					switch (index_from_rec+1)							//route name to the out
+						{
+						case (curr_index_disp):
+							{
+							if ((curr_category=cat_artist)||(curr_category=cat_album)
+								||(curr_category=cat_genre)||(curr_category=cat_composer)
+								&&(curr_index_disp<>0))
+								{
+								out_line1_buf$ = temp_line_out$ ; out_line1$ = out_line1_buf$;
+								}
+							}									
+						case (curr_index_disp + 1):
+							{
+							if(curr_category = cat_song)
+								{
+								out_line1_buf$ = temp_line_out$ ; out_line1$ = out_line1_buf$;
+								};
+							if ((curr_category=cat_artist)||(curr_category=cat_album)
+								||(curr_category=cat_genre)||(curr_category=cat_composer))
+								{
+								if(curr_index_disp=0)
+									{
+									out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;
+									}
+								else
+									{
+									out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;
+									};
+								};
+							}
+						case (curr_index_disp + 2):
+							{
+							if(curr_category = cat_song)
+								{
+								out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;
+								};
+							if(curr_category = cat_playlist)
+								{
+								out_line1_buf$ = temp_line_out$ ; out_line1$ = out_line1_buf$;								
+								};
+							if ((curr_category=cat_artist)||(curr_category=cat_album)
+								||(curr_category=cat_genre)||(curr_category=cat_composer))
+								{
+								out_line3_buf$ = temp_line_out$ ; out_line3$ = out_line3_buf$;
+								};
+							}
+						case (curr_index_disp + 3):
+							{
+							if(curr_category = cat_song)
+								{
+								out_line3_buf$ = temp_line_out$ ; out_line3$ = out_line3_buf$;
+								};
+							if(curr_category = cat_playlist)
+								{
+								out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;								
+								};
+							if ((curr_category=cat_artist)||(curr_category=cat_album)
+								||(curr_category=cat_genre)||(curr_category=cat_composer))
+								{
+								out_line4_buf$ = temp_line_out$ ; out_line4$ = out_line4_buf$;
+								};
+							}
+						case (curr_index_disp + 4):
+							{
+							if(curr_category = cat_song)
+								{
+								out_line4_buf$ = temp_line_out$ ; out_line4$ = out_line4_buf$;
+								};
+							if(curr_category = cat_playlist)
+								{
+								out_line3_buf$ = temp_line_out$ ; out_line3$ = out_line3_buf$;								
+								};
+							if ((curr_category=cat_artist)||(curr_category=cat_album)
+								||(curr_category=cat_genre)||(curr_category=cat_composer))
+								{
+								out_line5_buf$ = temp_line_out$ ; out_line5$ = out_line5_buf$;
+								};
+							}
+						case (curr_index_disp + 5):
+							{
+							if(curr_category = cat_song)
+								{
+								out_line5_buf$ = temp_line_out$ ; out_line5$ = out_line5_buf$;
+								};
+							if(curr_category = cat_playlist)
+								{
+								out_line4_buf$ = temp_line_out$ ; out_line4$ = out_line4_buf$;								
+								};
+							if ((curr_category=cat_artist)||(curr_category=cat_album)
+								||(curr_category=cat_genre)||(curr_category=cat_composer))
+								{
+								out_line6_buf$ = temp_line_out$ ; out_line6$ = out_line6_buf$;
+								};
+							}
+						case (curr_index_disp + 6):
+							{
+							if(curr_category = cat_song)
+								{
+								out_line6_buf$ = temp_line_out$ ; out_line6$ = out_line6_buf$;
+								};
+							if(curr_category = cat_playlist)
+								{
+								out_line5_buf$ = temp_line_out$ ; out_line5$ = out_line5_buf$;								
+								};
+							if ((curr_category=cat_artist)||(curr_category=cat_album)
+								||(curr_category=cat_genre)||(curr_category=cat_composer))
+								{
+								out_line7_buf$ = temp_line_out$ ; out_line7$ = out_line7_buf$;
+								};
+							}
+						case (curr_index_disp + 7):
+							{
+							if(curr_category = cat_song)
+								{
+								out_line7_buf$ = temp_line_out$ ; out_line7$ = out_line7_buf$;
+								};
+							if(curr_category = cat_playlist)
+								{
+								out_line6_buf$ = temp_line_out$ ; out_line6$ = out_line6_buf$;								
+								};
+							}
+						case (curr_index_disp + 8):
+							{
+							if(curr_category = cat_playlist)
+								{
+								out_line7_buf$ = temp_line_out$ ; out_line7$ = out_line7_buf$;								
+								};
+							}
+
+						}
+					}
+				case (0x23):									//returned playing song index
+					{
+					pl_song_index_b4 = getc(data_to_process$);
+					pl_song_index_b3 = getc(data_to_process$);
+					pl_song_index_b2 = getc(data_to_process$);
+					pl_song_index_b1 = getc(data_to_process$);
+					pl_song_index = 256 * pl_song_index_b2 + pl_song_index_b1 + 1;
+					if(update_player_flag) call update_player_data();//get title, artist, album
+					update_player_flag = 0;
+					}
+				case (0x0A):									//return number of playing song
+					{
+					num_pl_song_b4 = getc(data_to_process$);
+					num_pl_song_b3 = getc(data_to_process$);
+					num_pl_song_b2 = getc(data_to_process$);
+					num_pl_song_b1 = getc(data_to_process$);
+					num_pl_song = (num_pl_song_b2 * 256) + num_pl_song_b1;
+					}
+				case (0x19):									//returned playing song album
+					{
+					temp_line_out$ = "";						//clear temp string
+					rec_char_index = 7;
+					do
+						{
+						rec_char_next = getc(data_to_process$);
+						if (!rec_char_next) break;
+						rec_char_next =  translate_utf8(rec_char_next);
+						rec_char_index = rec_char_index + 1;
+						if(!rec_car_ind_flag)
+							{
+							temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+							}
+						rec_car_ind_flag = 0;
+						}
+					until ((rec_char_index = rec_lenght + 3)||(rec_char_index = 39));	//retrieve album name
+					playing_album$ = temp_line_out$;
+					}
+				case (0x1D):									//returned playing song title
+					{
+					temp_line_out$ = "";						//clear temp string
+					rec_char_index = 7;
+					do
+						{
+						rec_char_next = getc(data_to_process$);
+						if (!rec_char_next) break;
+						rec_char_next =  translate_utf8(rec_char_next);
+						rec_char_index = rec_char_index + 1;
+						if(!rec_car_ind_flag)
+							{
+							temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+							}
+						rec_car_ind_flag = 0;
+						}
+					until ((rec_char_index = rec_lenght + 3)||(rec_char_index = 39));	//retrieve song title
+					playing_title$ = temp_line_out$;
+					}
+				case (0x1F):									//returned playing song artist
+					{
+					temp_line_out$ = "";						//clear temp string
+					rec_char_index = 7;
+					do
+						{
+						rec_char_next = getc(data_to_process$);
+						if (!rec_char_next) break;
+						rec_char_next =  translate_utf8(rec_char_next);
+						rec_char_index = rec_char_index + 1;
+						if(!rec_car_ind_flag)
+							{
+							temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+							}
+						rec_car_ind_flag = 0;
+						}
+					until ((rec_char_index = rec_lenght + 3)||(rec_char_index = 39));	//retrieve artist name
+					playing_artist$ = temp_line_out$;
+					}
+				case (0x1B):									//play status change notificaton
+					{
+					player_status = getc(data_to_process$);
+					switch (player_status)
+						{
+						case (0x00):								//playback stopped
+							{
+							stop_fb = 1;
+							pause_fb = 0;
+							play_fb = 0;
+							cancelwait (player_wait);
+							cancelwait (player_wait_main);
+							call activate_browse();
+							page_title$ = "Music";
+							out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+							out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+							out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+							out_line4_buf$ = "Songs" ; out_line4$ = out_line4_buf$;
+							out_line5_buf$ = "Genres" ; out_line5$ = out_line5_buf$;
+							out_line6_buf$ = "Composers" ; out_line6$ = out_line6_buf$;
+							out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+							curr_category = cat_main;
+							curr_index = main_index;
+							curr_ind_low_lim = 0;
+							curr_ind_up_lim = 5;
+							call update_slider();
+							call update_dis_ind_rec();
+							}
+						case (0x01):								//playback song changed
+							{
+							pl_song_index_b4 = getc(data_to_process$);
+							pl_song_index_b3 = getc(data_to_process$);
+							pl_song_index_b2 = getc(data_to_process$);
+							pl_song_index_b1 = getc(data_to_process$);
+							pl_song_index = 256 * pl_song_index_b2 + pl_song_index_b1 + 1;
+							call update_player_data();			//get title, artist, album						delay(delaytime);
+							delay(delaytime);
+							call send_get_play_status();			//update song lenght,pos,pl status
+							}
+
+						case (0x04):
+							{
+							song_position_b4 = getc(data_to_process$);
+							song_position_b3 = getc(data_to_process$);
+							song_position_b2 = getc(data_to_process$);
+							song_position_b1 = getc(data_to_process$);
+							call calc_song_position ();
+							}
+						}
+					}
+				case (0x21):									//return play status
+					{
+					song_lenght_b4 = getc(data_to_process$);
+					song_lenght_b3 = getc(data_to_process$);
+					song_lenght_b2 = getc(data_to_process$);
+					song_lenght_b1 = getc(data_to_process$);
+					call calc_song_lenght ();
+					song_position_b4 = getc(data_to_process$);
+					song_position_b3 = getc(data_to_process$);
+					song_position_b2 = getc(data_to_process$);
+					song_position_b1 = getc(data_to_process$);
+					player_state_code = getc(data_to_process$);
+					call calc_song_position ();
+					switch (player_state_code)
+						{
+						case (0x00):
+							{
+							play_fb = 0;
+							pause_fb = 0;
+							stop_fb = 1;
+							cancelwait (player_wait);
+							cancelwait (player_wait_main);
+							}
+						case (0x01):
+							{
+							play_fb = 1;
+							pause_fb = 0;
+							stop_fb = 0;
+							}
+						case (0x02):
+							{
+							play_fb = 0;
+							pause_fb = 1;
+							stop_fb = 0;
+							cancelwait (player_wait);
+							cancelwait (player_wait_main);
+							}
+						}; 
+					}
+				case (0x25):									//return number of categorized db records
+					{
+					num_cat_rec_b4 = getc(data_to_process$);
+					num_cat_rec_b3 = getc(data_to_process$);
+					num_cat_rec_b2 = getc(data_to_process$);
+					num_cat_rec_b1 = getc(data_to_process$);
+					num_cat_rec = (num_cat_rec_b2 * 256) + num_cat_rec_b1;
+					curr_ind_up_lim = num_cat_rec - 1;
+					switch(curr_category)
+						{
+						case(cat_playlist):
+							{
+							num_of_playlists = num_cat_rec - 1;
+							}
+						case(cat_artist):
+							{
+							num_of_artists = num_cat_rec - 1;
+							}
+						case(cat_album):
+							{
+							num_of_albums = num_cat_rec - 1;
+							}
+						case(cat_genre):
+							{
+							num_of_genres = num_cat_rec - 1;
+							}
+						case(cat_song):
+							{
+							num_of_songs = num_cat_rec - 1;
+							}
+						case(cat_composer):
+							{
+							num_of_composers = num_cat_rec - 1;
+							}
+						};
+					switch(retr_flag)
+						{
+						case(1): call send_retr_recs (curr_index_disp - 1);
+						case(2): call send_retr_recs (curr_index_disp);
+						case(3): call send_retr_recs (curr_index_disp + 1);
+						};
+						retr_flag = 0;
+					}
+				case (0x29):									//returned iPod name
+					{
+					temp_line_out$ = "";							//clear temp string
+					rec_char_index = 7;
+					do
+						{
+						rec_char_next = getc(data_to_process$);
+						if (!rec_char_next) break;
+						rec_char_index = rec_char_index + 1;
+						temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+						}
+					until ((rec_char_index = rec_lenght + 3)||(rec_char_index = 39));	//retrieve iPod name
+					ipod_name$ = temp_line_out$;
+					}
+				case (0x0C):									//repeat status
+					{
+					repeat_code = getc(data_to_process$);
+					switch(repeat_code)
+						{
+						case(0x00):
+							{
+							repeat_one_fb = 0;
+							repeat_all_fb = 0;
+							repeat_off_fb = 1;
+							}
+						case(0x01):
+							{
+							repeat_one_fb = 1;
+							repeat_all_fb = 0;
+							repeat_off_fb = 0;
+							}
+						case(0x02):
+							{
+							repeat_one_fb = 0;
+							repeat_all_fb = 1;
+							repeat_off_fb = 0;
+							}
+						}
+					}
+				case (0x11):									//shuffle status
+					{
+					shuffle_code = getc(data_to_process$);
+					switch(shuffle_code)
+						{
+						case(0x00):
+							{
+							shuffle_songs_fb = 0;
+							shuffle_albums_fb = 0;
+							shuffle_off_fb = 1;
+							}
+						case(0x01):
+							{
+							shuffle_songs_fb = 1;
+							shuffle_albums_fb = 0;
+							shuffle_off_fb = 0;
+							}
+						case(0x02):
+							{
+							shuffle_songs_fb = 0;
+							shuffle_albums_fb = 1;
+							shuffle_off_fb = 0;
+							}
+						}
+					}
+				case (0x3D):									//acknowladge - ipod docked
+					{
+					ack_char = getc(data_to_process$);
+					ack_char = getc(data_to_process$);
+					ack_char = getc(data_to_process$);
+					if (ack_char = 0x0E) call ipod_docked();
+					}												 
+				}
+			}
+		analize_in_progres = 0;
+	}
+
+
+
+/*******************************************************************************************
+
+parse incoming serial data:		ok
+          
+*******************************************************************************************/
+	
+change data_in$ 								// trigger whenever a character comes in
+	{
+	if (RxOk)
+		{
+		RxOk = off;
+		do
+			{
+			if ((char_1 = 0x2A)&&((char_2 = 0x49)||(char_2 = 0x4D))&&(char_3 = 0x00)) // is it begining of the string?
+				{
+				temp$ = chr(char_1) + chr(char_2) + chr(char_3);
+				char_index = 3;
+				}
+			char_1 = char_2;
+			char_2 = char_3;
+			char_3 = getc(data_in$);
+			temp$ = temp$ + chr(char_3);
+			char_index = char_index + 1;
+			if (char_index = 4) packet_lenght = char_3;
+			if (char_index = packet_lenght + 4)
+	            {
+				call analize_inc_data (temp$);
+				}
+			}
+		until ((len(data_in$) = 0)); 									// buffer is empty
+		};
+		RxOk = on;
+	}
+	
+
+/*******************************************************************************************
+
+push up:		ok
+          
+*******************************************************************************************/
+
+
+push up
+        
+	{
+	if(browse_fb)
+		{
+		if (play_fb = 1)
+			{
+			retimewait (1000, player_wait);
+			};
+		if (curr_index S> curr_ind_low_lim)
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			curr_index = curr_index - 1;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				};
+	 		call update_curr_ind_disp();
+			call update_dis_ind_rec();
+			};
+		call update_slider();
+		}
+	}
+
+
+
+/*******************************************************************************************
+
+push down:		ok
+          
+*******************************************************************************************/
+
+
+push down
+
+	{
+	if(browse_fb)
+		{
+		if (play_fb = 1)
+			{
+			retimewait (1000, player_wait);
+			};
+		if (curr_index S< curr_ind_up_lim)
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			curr_index = curr_index + 1;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				};
+	 		call update_curr_ind_disp();
+			call update_dis_ind_rec();
+			};
+		call update_slider();
+		}
+	}
+
+/*******************************************************************************************
+
+push fast up:		ok
+          
+*******************************************************************************************/
+
+
+push fast_up
+
+	{
+	if(browse_fb)
+		{
+		if (play_fb = 1)
+			{
+			retimewait (1000, player_wait);
+			};
+		if (fast_num_of_rec <= 2) fast_n_o_r = 2;
+		if (fast_num_of_rec >= 50) fast_n_o_r = 50;
+		if ((fast_num_of_rec > 2)&&(fast_num_of_rec < 50)) fast_n_o_r = fast_num_of_rec;
+		if ((curr_index - fast_n_o_r) S> curr_ind_low_lim)
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			curr_index = curr_index - fast_n_o_r;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				};
+	 		call update_curr_ind_disp();
+			call update_dis_ind_rec();
+			}
+		else
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			curr_index = curr_ind_low_lim;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				};
+	 		call update_curr_ind_disp();
+			call update_dis_ind_rec();
+			};
+		call update_slider();
+		}
+	}
+
+
+
+/*******************************************************************************************
+
+push fast down:		ok
+          
+*******************************************************************************************/
+
+
+push fast_down
+
+	{
+	if(browse_fb)
+		{
+		if (play_fb = 1)
+			{
+			retimewait (1000, player_wait);
+			};
+		if (fast_num_of_rec <= 2) fast_n_o_r = 2;
+		if (fast_num_of_rec >= 50) fast_n_o_r = 50;
+		if ((fast_num_of_rec > 2)&&(fast_num_of_rec < 50)) fast_n_o_r = fast_num_of_rec;
+		if ((curr_index + fast_n_o_r) S< curr_ind_up_lim)
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			curr_index = curr_index + fast_n_o_r;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				};
+	 		call update_curr_ind_disp();
+			call update_dis_ind_rec();
+			}
+		else
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			curr_index = curr_ind_up_lim;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				};
+	 		call update_curr_ind_disp();
+			call update_dis_ind_rec();
+			};
+		call update_slider();
+		}
+	}
+
+
+/*******************************************************************************************
+
+shuffle:			ok
+          
+*******************************************************************************************/
+
+
+push shuffle_off
+	{
+	call send_shuffle(0x00);			//off
+	}
+
+push shuffle_songs
+	{
+	call send_shuffle(0x01);			//songs
+	}
+
+push shuffle_albums
+	{
+	call send_shuffle(0x02);			//albums
+	}
+
+push shuffle
+	{
+	if (shuffle_off_fb) call send_shuffle(0x01);		//songs
+	if (shuffle_songs_fb) call send_shuffle(0x02);		//albums
+	if (shuffle_albums_fb) call send_shuffle(0x00);		//off
+	}
+
+
+/*******************************************************************************************
+
+repeat:			ok
+          
+*******************************************************************************************/
+
+
+push repeat_off
+	{
+	call send_repeat(0x00);			//off
+	}
+
+push repeat_one
+	{
+	call send_repeat(0x01);			//one track
+	}
+
+push repeat_all
+	{
+	call send_repeat(0x02);			//all
+	}
+
+push repeat
+	{
+	if (repeat_off_fb) call send_repeat(0x01);		//one track
+	if (repeat_one_fb) call send_repeat(0x02);		//all
+	if (repeat_all_fb) call send_repeat(0x00);		//off
+	}
+
+
+/*******************************************************************************************
+
+enter - exit remote UI mode:		ok
+          
+*******************************************************************************************/
+
+
+	push enter_rem_UI
+		{
+		out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x3C)+chr(0x3C)+
+						 chr(0x39)+chr(0x03);
+		}
+
+	push exit_rem_UI
+		{
+		out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x3C)+chr(0x3C)+
+						 chr(0x3A)+chr(0x02);
+		}
+
+
+/*******************************************************************************************
+
+slider:		ok
+          
+*******************************************************************************************/
+
+
+change slider_in
+	{
+	if (play_fb = 1)
+		{
+		retimewait (1000, player_wait);
+		};
+	if(!index_change_flag) prev_curr_index = curr_index;
+	index_change_flag = 1;
+	curr_index = MULDIV((65535 - slider_in),((curr_ind_up_lim-curr_ind_low_lim)UMOD 65536)
+				,65535);
+	call update_curr_ind_disp();
+	call update_dis_ind_rec();
+	call update_slider();
+	}
+			

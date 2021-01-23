@@ -1,0 +1,7 @@
+[IPTable]
+id0=09
+addr0=192.168.0.200
+mstr0=FALSE
+port0=41794
+deviceid0=00
+usetcp0=FALSE

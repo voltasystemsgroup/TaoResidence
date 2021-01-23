@@ -1,0 +1,97 @@
+[BEGIN]
+  Version=1
+[END]
+[BEGIN]
+  ObjTp=FSgntr
+  Sgntr=UserSPlus
+  RelVrs=1
+  IntStrVrs=1
+  SPlusVrs=3.03.16
+  CrossCplrVrs=1.3
+[END]
+[BEGIN]
+  ObjTp=Hd
+  Cmn1=This module is designed to work within the Xperinet MIRV API2 Control||1
+  Cmn2=Module\\to generate properly formatted commands and parse incoming||1
+  Cmn3=feedback.\\\\This module was tested with version 2.2-49 of Xperinet||1
+  Cmn4=MIRV firmware.\\Firmware versions beyond the version listed above||1
+  Cmn5=may provide results that\\vary from the documented operation of||1
+  Cmn6=the module.
+[END]
+[BEGIN]
+  ObjTp=Symbol
+  Exclusions=1,19,20,21,88,89,310,718,756,854,
+  Exclusions_CDS=5
+  Name=Xperinet MIRV API2 Feedback Parser & Command Generator r01
+  SmplCName=Xperinet MIRV API2 Feedback Parser & Command Generator r01.usp
+  Code=1
+  SysRev5=3.083
+  SMWRev=2.02.05
+  InputCue1=CLEAR_STATUS_STRINGS
+  InputSigType1=Digital
+  OutputCue1=ERROR_PULSE
+  OutputSigType1=Digital
+  OutputCue2=API2_OK
+  OutputSigType2=Digital
+  InputList2Cue1=ZONE_IN
+  InputList2SigType1=Analog
+  InputList2Cue2=IN$
+  InputList2SigType2=Serial
+  InputList2Cue3=CMD$
+  InputList2SigType3=Serial
+  InputList2Cue4=SEARCH$
+  InputList2SigType4=Serial
+  InputList2Cue5=SEARCH_CMD$
+  InputList2SigType5=Serial
+  OutputList2Cue1=ZONE_OUT
+  OutputList2SigType1=Analog
+  OutputList2Cue2=TX$
+  OutputList2SigType2=Serial
+  OutputList2Cue3=ERROR$
+  OutputList2SigType3=Serial
+  OutputList2Cue4=OUT$[#]
+  OutputList2SigType4=Serial
+  ParamCue1=[Reference Name]
+  MinVariableInputs=1
+  MaxVariableInputs=1
+  MinVariableInputsList2=5
+  MaxVariableInputsList2=5
+  MinVariableOutputs=2
+  MaxVariableOutputs=2
+  MinVariableOutputsList2=4
+  MaxVariableOutputsList2=43
+  MinVariableParams=0
+  MaxVariableParams=0
+  Expand=expand_separately
+  Expand2=expand_separately
+  ProgramTree=Logic
+  SymbolTree=32
+  Hint=Used Within the Xperinet MIRV API2 Control Module
+  PdfHelp=
+  HelpID= 
+  Render=4
+  Smpl-C=16
+  CompilerCode=-48
+  CompilerParamCode=27
+  CompilerParamCode5=14
+  NumFixedParams=1
+  Pp1=1
+  MPp=1
+  NVStorage=10
+  ParamSigType1=String
+  SmplCInputCue1=o#
+  SmplCOutputCue1=i#
+  SmplCInputList2Cue1=an#
+  SmplCOutputList2Cue1=ai#
+  SPlusShortSaveName=XPERIN~1.UF
+  SPlusLongSaveName=XPERINET MIRV API2 FEEDBACK PARSER & COMMAND GENERATOR R01.UF
+  SPlus2CompiledName=S2_Xperinet_MIRV_API2_Feedback_Parser___Command_Generator_r01
+  SymJam=NonExclusive
+  FileName=Xperinet MIRV API2 Feedback Parser & Command Generator r01.ush
+[END]
+[BEGIN]
+  ObjTp=Dp
+  H=1
+  Tp=1
+  NoS=False
+[END]

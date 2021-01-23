@@ -1,0 +1,19 @@
+[Entries]
+PRO2=tcp 192.168.0.100
+TP4500=PRO2:cresnet 55
+232=rs232 3,0,n,8,1,n,y
+CT1000=PRO2:cresnet 56
+New Entry 1=usb
+New Entry 2=New Entry 1:cresnet 29
+
+[Settings]
+DefaultEntry=
+
+[Comments]
+PRO2=
+TP4500=
+232=
+CT1000=
+New Entry 1=
+New Entry 2=
+

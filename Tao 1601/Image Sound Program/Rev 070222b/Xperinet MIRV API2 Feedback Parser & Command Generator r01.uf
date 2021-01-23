@@ -1,0 +1,111 @@
+NEWVO 
+DIGITAL_INPUTS ~CLEAR_STATUS_STRINGS;
+ANALOG_INPUTS ~ZONE_IN;
+STRING_INPUTS ~IN$[300],~CMD$[100],~SEARCH$[100],~SEARCH_CMD$[100];
+DIGITAL_OUTPUTS ~ERROR_PULSE,~API2_OK;
+ANALOG_OUTPUTS ~ZONE_OUT;
+STRING_OUTPUTS ~TX$,~ERROR$,~OUT$[40];
+INTEGERS ~ZONE;
+INTEGERS ~WAIT_FLAG;
+STRINGS ~TEMP$[5];
+STRINGS ~SURROUND_TEMP$[100];
+STRINGS ~TEMP_ERROR$[30];
+INTEGERS ~TEMP_AN,~MSG_TYPE;
+DEFNX ~CLEAR_ERROR( ) 
+
+ 1 ~WAIT_FLAG ! 
+  500 WAIT ERROR_CLEAR {
+s" " ~ERROR$ SYM_WR 
+ 0 ~WAIT_FLAG ! 
+}
+
+ENDF 
+CHANGE ~ZONE_IN  
+{ 
+  ~ZONE_IN 1 U< ~ZONE_IN 99 U> || IF
+ 1 ~ZONE ! 
+
+ELSE 
+ ~ZONE_IN ~ZONE ! 
+THEN
+ ~ZONE @ ~ZONE_OUT SYM_WR 
+  ~ZONE @ <p p" *%02d/report status\n" p> ~TX$  SYM_WR 
+} 
+CHANGE ~CMD$  
+{ 
+  ~CMD$ $@ ~ZONE @ <p p" *%02d/%s\n" p> ~TX$  SYM_WR 
+} 
+CHANGE ~SEARCH_CMD$  
+{ 
+  ~SEARCH$ $@ ~SEARCH_CMD$ $@ ~ZONE @ <p p" *%02d/%s %s\n" p> ~TX$  SYM_WR 
+} 
+PUSH ~CLEAR_STATUS_STRINGS  
+{ 
+s" " WR$ ~OUT$   
+} 
+CHANGE ~IN$  
+{ 
+  s" *" ~IN$ $@ 1 POS 1 <> IF
+BAIL 
+THEN
+s" /" ~IN$ 1 REMOVE$ ~TEMP$ $! 
+ ~TEMP$ $@ ATOI ~TEMP_AN ! 
+  ~TEMP_AN @ ~ZONE @ <> IF
+BAIL 
+THEN
+  s" /" ~IN$ $@ 1 POS 0 = IF
+  ~IN$ $@ s" OK\n" $= IF
+BAIL 
+
+ELSE 
+  ~IN$ $@ s" Invalid Command\n" $= IF
+s" Invalid Command" ~ERROR$ SYM_WR 
+  ~WAIT_FLAG @ IF
+  500 RETIME_WAIT ERROR_CLEAR 
+  
+
+ELSE 
+ ~CLEAR_ERROR( )   
+THEN
+THEN
+THEN
+BAIL 
+THEN
+s" /" ~IN$ 1 REMOVE$ ~TEMP$ $! 
+ ~TEMP$ $@ ATOI ~MSG_TYPE ! 
+  ~MSG_TYPE @ 99 = IF
+~IN$ $@ ~IN$ $@ NIP 2 - LEFT$ ~TEMP_ERROR$ $! 
+~TEMP_ERROR$ $@ ~ERROR$ SYM_WR 
+  ~TEMP_ERROR$ $@ s" unknown zone" $= IF
+  <p p" RESETTING CONTROL ZONE TO 1\n" p> TYPE 
+ 1 ~ZONE ! 
+ ~ZONE @ ~ZONE_OUT SYM_WR 
+THEN
+  25 PULSE ~ERROR_PULSE 
+  
+  ~WAIT_FLAG @ IF
+  500 RETIME_WAIT ERROR_CLEAR 
+  
+
+ELSE 
+ ~CLEAR_ERROR( )   
+THEN
+
+ELSE 
+  ~MSG_TYPE @ 98 = IF
+  10 PULSE ~API2_OK 
+  
+
+ELSE 
+~IN$ $@ ~IN$ $@ NIP 2 - LEFT$ ~MSG_TYPE @ ~OUT$ SYM_WR 
+THEN
+THEN
+} 
+ MAIN { 
+
+ 0 ~WAIT_FLAG ! 
+ 1 ~ZONE ! 
+ ~ZONE @ ~ZONE_OUT SYM_WR 
+} 
+
+SAVE" XPERIN~1.UF" 

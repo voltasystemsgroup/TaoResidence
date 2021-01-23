@@ -1,0 +1,11 @@
+[Entries]
+AV2=rs232 3,0,n,8,1,n,y
+THEATRE TP=AV2:cresnet 05
+
+[Settings]
+DefaultEntry=
+
+[Comments]
+AV2=
+THEATRE TP=
+

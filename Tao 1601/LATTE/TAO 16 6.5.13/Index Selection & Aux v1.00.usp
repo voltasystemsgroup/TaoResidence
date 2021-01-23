@@ -1,0 +1,129 @@
+
+#DEFAULT_VOLATILE
+
+#DEFINE_CONSTANT MAX_IO 48
+
+
+DIGITAL_INPUT AUX, SMART_AUX, SMART_INDEX, INDEX_0, INDEX[ MAX_IO ];
+
+
+ANALOG_INPUT AUX_INDEX, INDEX_IN;
+ANALOG_OUTPUT INDEX_OUT;
+                       
+Integer gnIndex, gnInAux, gnIndexBeforeAux;
+
+
+Function UpdateIndex( Integer nIndex )
+{
+	If( SMART_INDEX )
+	{
+		If( gnIndex != nIndex )
+		{
+			INDEX_OUT = nIndex;
+		}		
+	}
+	Else
+	{
+		INDEX_OUT = nIndex;
+	}
+}
+
+PUSH INDEX
+{
+	Integer nLMAI;
+	
+	nLMAI = GetLastModifiedArrayIndex( );
+	
+	If( !AUX )
+		UpdateIndex( nLMAI );
+}
+
+PUSH INDEX_0
+{
+	If( !AUX )
+		UpdateIndex( 0 );
+}
+
+CHANGE INDEX_IN
+{
+	gnIndex = INDEX_IN;
+}
+
+Function SetAux( )
+{
+	gnIndexBeforeAux = gnIndex;
+	INDEX_OUT = AUX_INDEX;
+	gnInAux = 1;
+}
+
+Function ClearAux( )
+{
+	INDEX_OUT = gnIndexBeforeAux;
+	gnInAux = 0;
+}
+
+PUSH AUX
+{
+	If( AUX_INDEX ) //AUX is defined
+	{	
+		If( SMART_AUX ) //want to turn on AUX when index is 0
+		{	
+			If( SMART_INDEX ) //do not reprop if it is equal
+			{
+				If( gnIndex != AUX_INDEX ) //check if it is equal
+				{
+					SetAux( );
+				}		
+			}
+			Else //reprop cuz smart index is off
+			{
+				SetAux( );
+			}
+		}
+		Else //do not turn on AUX when index is 0
+		{
+			If( gnIndex != 0 ) //check if it is 0
+			{
+				If( SMART_INDEX ) //do not reprop if it is equal
+				{
+					If( gnIndex != AUX_INDEX ) //check if it is equal
+					{
+						SetAux( );
+					}
+				} //reprop cuz smart index is off
+				Else
+				{
+					SetAux( );
+				}		
+			}
+		}
+	}
+}
+
+RELEASE AUX
+{
+	If( AUX_INDEX && gnInAux ) //AUX is defined and is on
+	{	
+		If( SMART_INDEX ) //do not reprop if it is equal
+		{
+			If( gnIndex != gnIndexBeforeAux ) //check if it is equal
+			{
+				ClearAux( );
+			}		
+		}
+		Else //reprop cuz smart index is off
+		{
+			ClearAux( );
+		}			
+	}	
+}
+
+
+Function Main( )
+{
+	gnIndex = 0;
+	gnInAux = 0;
+	gnIndexBeforeAux = 0;
+}                        
+
+

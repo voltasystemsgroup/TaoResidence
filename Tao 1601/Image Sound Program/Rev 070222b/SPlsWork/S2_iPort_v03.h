@@ -1,0 +1,293 @@
+#ifndef __S2_IPORT_V03_H__
+#define __S2_IPORT_V03_H__
+
+
+
+
+/*
+* Constructor and Destructor
+*/
+
+/*
+* DIGITAL_INPUT
+*/
+#define __S2_iPort_v03_MENU_DIG_INPUT 0
+#define __S2_iPort_v03_ENTER_DIG_INPUT 1
+#define __S2_iPort_v03_PLAY_PAUSE_DIG_INPUT 2
+#define __S2_iPort_v03_UP_DIG_INPUT 3
+#define __S2_iPort_v03_DOWN_DIG_INPUT 4
+#define __S2_iPort_v03_FAST_UP_DIG_INPUT 5
+#define __S2_iPort_v03_FAST_DOWN_DIG_INPUT 6
+#define __S2_iPort_v03_REPEAT_DIG_INPUT 7
+#define __S2_iPort_v03_REPEAT_ONE_DIG_INPUT 8
+#define __S2_iPort_v03_REPEAT_ALL_DIG_INPUT 9
+#define __S2_iPort_v03_REPEAT_OFF_DIG_INPUT 10
+#define __S2_iPort_v03_SHUFFLE_DIG_INPUT 11
+#define __S2_iPort_v03_SHUFFLE_SONGS_DIG_INPUT 12
+#define __S2_iPort_v03_SHUFFLE_ALBUMS_DIG_INPUT 13
+#define __S2_iPort_v03_SHUFFLE_OFF_DIG_INPUT 14
+#define __S2_iPort_v03_PLAY_DIG_INPUT 15
+#define __S2_iPort_v03_PAUSE_DIG_INPUT 16
+#define __S2_iPort_v03_STOP_DIG_INPUT 17
+#define __S2_iPort_v03_NEXT_TRACK_DIG_INPUT 18
+#define __S2_iPort_v03_PREV_TRACK_DIG_INPUT 19
+#define __S2_iPort_v03_FFWD_DIG_INPUT 20
+#define __S2_iPort_v03_REW_DIG_INPUT 21
+#define __S2_iPort_v03_SLIDER_PRESS_DIG_INPUT 22
+#define __S2_iPort_v03_DISABLE_NOTIF_DIG_INPUT 23
+#define __S2_iPort_v03_PLAY_ON_DOCK_DIG_INPUT 24
+#define __S2_iPort_v03_LINE1_PRESS_DIG_INPUT 25
+#define __S2_iPort_v03_LINE2_PRESS_DIG_INPUT 26
+#define __S2_iPort_v03_LINE3_PRESS_DIG_INPUT 27
+#define __S2_iPort_v03_LINE4_PRESS_DIG_INPUT 28
+#define __S2_iPort_v03_LINE5_PRESS_DIG_INPUT 29
+#define __S2_iPort_v03_LINE6_PRESS_DIG_INPUT 30
+#define __S2_iPort_v03_LINE7_PRESS_DIG_INPUT 31
+#define __S2_iPort_v03_ENTER_REM_UI_DIG_INPUT 32
+#define __S2_iPort_v03_EXIT_REM_UI_DIG_INPUT 33
+
+
+/*
+* ANALOG_INPUT
+*/
+#define __S2_iPort_v03_SLIDER_IN_ANALOG_INPUT 0
+#define __S2_iPort_v03_FAST_NUM_OF_REC_ANALOG_INPUT 1
+
+
+#define __S2_iPort_v03_DATA_IN$_BUFFER_INPUT 2
+#define __S2_iPort_v03_DATA_IN$_BUFFER_MAX_LEN 1000
+CREATE_STRING_STRUCT( S2_iPort_v03, __DATA_IN$, __S2_iPort_v03_DATA_IN$_BUFFER_MAX_LEN );
+
+
+/*
+* DIGITAL_OUTPUT
+*/
+#define __S2_iPort_v03_OUT_LINE1_FB_DIG_OUTPUT 0
+#define __S2_iPort_v03_OUT_LINE2_FB_DIG_OUTPUT 1
+#define __S2_iPort_v03_OUT_LINE3_FB_DIG_OUTPUT 2
+#define __S2_iPort_v03_OUT_LINE4_FB_DIG_OUTPUT 3
+#define __S2_iPort_v03_OUT_LINE5_FB_DIG_OUTPUT 4
+#define __S2_iPort_v03_OUT_LINE6_FB_DIG_OUTPUT 5
+#define __S2_iPort_v03_OUT_LINE7_FB_DIG_OUTPUT 6
+#define __S2_iPort_v03_PLAY_FB_DIG_OUTPUT 7
+#define __S2_iPort_v03_PAUSE_FB_DIG_OUTPUT 8
+#define __S2_iPort_v03_STOP_FB_DIG_OUTPUT 9
+#define __S2_iPort_v03_REPEAT_ONE_FB_DIG_OUTPUT 10
+#define __S2_iPort_v03_REPEAT_ALL_FB_DIG_OUTPUT 11
+#define __S2_iPort_v03_REPEAT_OFF_FB_DIG_OUTPUT 12
+#define __S2_iPort_v03_SHUFFLE_SONGS_FB_DIG_OUTPUT 13
+#define __S2_iPort_v03_SHUFFLE_ALBUMS_FB_DIG_OUTPUT 14
+#define __S2_iPort_v03_SHUFFLE_OFF_FB_DIG_OUTPUT 15
+#define __S2_iPort_v03_PLAYER_FB_DIG_OUTPUT 16
+#define __S2_iPort_v03_BROWSE_FB_DIG_OUTPUT 17
+#define __S2_iPort_v03_IPOD_IS_IN_DIG_OUTPUT 18
+#define __S2_iPort_v03_IPOD_IS_OUT_DIG_OUTPUT 19
+
+
+/*
+* ANALOG_OUTPUT
+*/
+#define __S2_iPort_v03_PL_SONG_INDEX_ANALOG_OUTPUT 0
+#define __S2_iPort_v03_NUM_PL_SONG_ANALOG_OUTPUT 1
+#define __S2_iPort_v03_TOTAL_MIN_ANALOG_OUTPUT 2
+#define __S2_iPort_v03_TOTAL_SEC_ANALOG_OUTPUT 3
+#define __S2_iPort_v03_TOTAL_IN_SEC_ANALOG_OUTPUT 4
+#define __S2_iPort_v03_ELAPS_MIN_ANALOG_OUTPUT 5
+#define __S2_iPort_v03_ELAPS_SEC_ANALOG_OUTPUT 6
+#define __S2_iPort_v03_ELAPS_IN_SEC_ANALOG_OUTPUT 7
+#define __S2_iPort_v03_REMAIN_MIN_ANALOG_OUTPUT 8
+#define __S2_iPort_v03_REMAIN_SEC_ANALOG_OUTPUT 9
+#define __S2_iPort_v03_REMAIN_IN_SEC_ANALOG_OUTPUT 10
+#define __S2_iPort_v03_TIME_BAR_ANALOG_OUTPUT 11
+#define __S2_iPort_v03_SLIDER_FB_ANALOG_OUTPUT 12
+
+#define __S2_iPort_v03_PAGE_TITLE$_STRING_OUTPUT 13
+#define __S2_iPort_v03_OUT_LINE1$_STRING_OUTPUT 14
+#define __S2_iPort_v03_OUT_LINE2$_STRING_OUTPUT 15
+#define __S2_iPort_v03_OUT_LINE3$_STRING_OUTPUT 16
+#define __S2_iPort_v03_OUT_LINE4$_STRING_OUTPUT 17
+#define __S2_iPort_v03_OUT_LINE5$_STRING_OUTPUT 18
+#define __S2_iPort_v03_OUT_LINE6$_STRING_OUTPUT 19
+#define __S2_iPort_v03_OUT_LINE7$_STRING_OUTPUT 20
+#define __S2_iPort_v03_PLAYING_ALBUM$_STRING_OUTPUT 21
+#define __S2_iPort_v03_PLAYING_TITLE$_STRING_OUTPUT 22
+#define __S2_iPort_v03_PLAYING_ARTIST$_STRING_OUTPUT 23
+#define __S2_iPort_v03_IPOD_NAME$_STRING_OUTPUT 24
+#define __S2_iPort_v03_OUT_TO_IPORT$_STRING_OUTPUT 25
+
+
+/*
+* Direct Socket Variables
+*/
+
+
+
+
+/*
+* INTEGER_PARAMETER
+*/
+/*
+* SIGNED_INTEGER_PARAMETER
+*/
+/*
+* LONG_INTEGER_PARAMETER
+*/
+/*
+* SIGNED_LONG_INTEGER_PARAMETER
+*/
+/*
+* INTEGER_PARAMETER
+*/
+/*
+* SIGNED_INTEGER_PARAMETER
+*/
+/*
+* LONG_INTEGER_PARAMETER
+*/
+/*
+* SIGNED_LONG_INTEGER_PARAMETER
+*/
+/*
+* STRING_PARAMETER
+*/
+
+
+/*
+* INTEGER
+*/
+
+
+/*
+* LONG_INTEGER
+*/
+
+
+/*
+* SIGNED_INTEGER
+*/
+
+
+/*
+* SIGNED_LONG_INTEGER
+*/
+
+
+/*
+* STRING
+*/
+#define __S2_iPort_v03_TEMP$_STRING_MAX_LEN 1000
+CREATE_STRING_STRUCT( S2_iPort_v03, __TEMP$, __S2_iPort_v03_TEMP$_STRING_MAX_LEN );
+#define __S2_iPort_v03_PAGE_TITLE_BUF$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __PAGE_TITLE_BUF$, __S2_iPort_v03_PAGE_TITLE_BUF$_STRING_MAX_LEN );
+#define __S2_iPort_v03_TITLE_PLAYLIST$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __TITLE_PLAYLIST$, __S2_iPort_v03_TITLE_PLAYLIST$_STRING_MAX_LEN );
+#define __S2_iPort_v03_TITLE_ARTIST$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __TITLE_ARTIST$, __S2_iPort_v03_TITLE_ARTIST$_STRING_MAX_LEN );
+#define __S2_iPort_v03_TITLE_ALBUM$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __TITLE_ALBUM$, __S2_iPort_v03_TITLE_ALBUM$_STRING_MAX_LEN );
+#define __S2_iPort_v03_TITLE_GENRE$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __TITLE_GENRE$, __S2_iPort_v03_TITLE_GENRE$_STRING_MAX_LEN );
+#define __S2_iPort_v03_TITLE_COMPOSER$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __TITLE_COMPOSER$, __S2_iPort_v03_TITLE_COMPOSER$_STRING_MAX_LEN );
+#define __S2_iPort_v03_OUT_LINE1_BUF$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE1_BUF$, __S2_iPort_v03_OUT_LINE1_BUF$_STRING_MAX_LEN );
+#define __S2_iPort_v03_OUT_LINE2_BUF$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE2_BUF$, __S2_iPort_v03_OUT_LINE2_BUF$_STRING_MAX_LEN );
+#define __S2_iPort_v03_OUT_LINE3_BUF$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE3_BUF$, __S2_iPort_v03_OUT_LINE3_BUF$_STRING_MAX_LEN );
+#define __S2_iPort_v03_OUT_LINE4_BUF$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE4_BUF$, __S2_iPort_v03_OUT_LINE4_BUF$_STRING_MAX_LEN );
+#define __S2_iPort_v03_OUT_LINE5_BUF$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE5_BUF$, __S2_iPort_v03_OUT_LINE5_BUF$_STRING_MAX_LEN );
+#define __S2_iPort_v03_OUT_LINE6_BUF$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE6_BUF$, __S2_iPort_v03_OUT_LINE6_BUF$_STRING_MAX_LEN );
+#define __S2_iPort_v03_OUT_LINE7_BUF$_STRING_MAX_LEN 50
+CREATE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE7_BUF$, __S2_iPort_v03_OUT_LINE7_BUF$_STRING_MAX_LEN );
+
+/*
+* STRUCTURE
+*/
+
+START_GLOBAL_VAR_STRUCT( S2_iPort_v03 )
+{
+   void* InstancePtr;
+   struct GenericOutputString_s sGenericOutStr;
+   unsigned short LastModifiedArrayIndex;
+
+   unsigned short __CHAR_1;
+   unsigned short __CHAR_2;
+   unsigned short __CHAR_3;
+   unsigned short __CHAR_INDEX;
+   unsigned short __PACKET_LENGHT;
+   unsigned short __CURR_PATH;
+   unsigned short __CURR_CATEGORY;
+   unsigned short __NUM_OF_PLAYLISTS;
+   unsigned short __NUM_OF_ARTISTS;
+   unsigned short __NUM_OF_ALBUMS;
+   unsigned short __NUM_OF_GENRES;
+   unsigned short __NUM_OF_SONGS;
+   unsigned short __NUM_OF_COMPOSERS;
+   unsigned short __SONG_POSITION_B4;
+   unsigned short __SONG_POSITION_B3;
+   unsigned short __SONG_POSITION_B2;
+   unsigned short __SONG_POSITION_B1;
+   unsigned short __SONG_LENGHT_B4;
+   unsigned short __SONG_LENGHT_B3;
+   unsigned short __SONG_LENGHT_B2;
+   unsigned short __SONG_LENGHT_B1;
+   unsigned short __ANALIZE_IN_PROGRES;
+   unsigned short __REC_CAR_IND_FLAG;
+   unsigned short __NOTIF_ON_FLAG;
+   unsigned short __FFWD_FROM_NEXT_FLAG;
+   unsigned short __REW_FROM_PREV_FLAG;
+   unsigned short __RXOK;
+   unsigned short __UPDATE_PLAYER_FLAG;
+   unsigned short __INDEX_CHANGE_FLAG;
+   unsigned short __RETR_FLAG;
+   unsigned long __MAIN_INDEX;
+   unsigned long __PLAYLIST_INDEX;
+   unsigned long __ARTIST_INDEX;
+   unsigned long __ALBUM_INDEX;
+   unsigned long __SONG_INDEX;
+   unsigned long __GENRE_INDEX;
+   unsigned long __COMPOSER_INDEX;
+   unsigned long __CURR_INDEX;
+   unsigned long __PREV_CURR_INDEX;
+   unsigned long __CURR_INDEX_DISP;
+   unsigned long __PREV_INDEX_DISP;
+   unsigned long __DISP_INDEX;
+   unsigned long __CURR_IND_LOW_LIM;
+   unsigned long __CURR_IND_UP_LIM;
+   unsigned long __ELAPS_TIME_MS;
+   unsigned long __TOTAL_TIME_MS;
+   unsigned long __REMAIN_TIME_MS;
+   unsigned long __FAST_N_O_R;
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __TEMP$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __PAGE_TITLE_BUF$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __TITLE_PLAYLIST$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __TITLE_ARTIST$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __TITLE_ALBUM$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __TITLE_GENRE$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __TITLE_COMPOSER$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE1_BUF$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE2_BUF$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE3_BUF$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE4_BUF$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE5_BUF$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE6_BUF$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __OUT_LINE7_BUF$ );
+   DECLARE_STRING_STRUCT( S2_iPort_v03, __DATA_IN$ );
+};
+
+START_NVRAM_VAR_STRUCT( S2_iPort_v03 )
+{
+};
+
+DEFINE_WAITEVENT( S2_iPort_v03, PLAYER_WAIT );
+DEFINE_WAITEVENT( S2_iPort_v03, PLAYER_WAIT_MAIN );
+DEFINE_WAITEVENT( S2_iPort_v03, NEXT_WAIT );
+DEFINE_WAITEVENT( S2_iPort_v03, PREV_WAIT );
+
+
+#endif //__S2_IPORT_V03_H__
+

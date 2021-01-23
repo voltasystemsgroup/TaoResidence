@@ -1,0 +1,3 @@
+(L) set_mode_remote_control(api1)  [Slot-09.ID-04.KIT: [TP] CT-1000 // Slot-09.ID-05.LIV: [TP] TPS-4500]
+(L) use_ethernet_control  [Slot-09.ID-04.KIT: [TP] CT-1000 // Slot-09.ID-05.LIV: [TP] TPS-4500]
+(L) use_serial_control  [Slot-09.ID-04.KIT: [TP] CT-1000 // Slot-09.ID-05.LIV: [TP] TPS-4500]

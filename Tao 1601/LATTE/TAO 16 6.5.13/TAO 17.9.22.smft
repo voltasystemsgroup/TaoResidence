@@ -1,0 +1,21 @@
+<Device Model="PRO2">
+   <Network Type="Ethernet" Id="08">
+      <Device Model="Crestron_App" DeviceId="04" Name="Crestron App [IPOD]"/>
+      <Device Model="Crestron_App" DeviceId="05" Name="Crestron App[IPAD]"/>
+   </Network>
+   <Network Type="Cresnet" Id="09">
+      <Device Model="CNX-PAD8" DeviceId="03" Name="CNX-PAD8 [PAD8]"/>
+      <Device Model="ST-LT" DeviceId="0A" Name="ST-LT [LUTRON]"/>
+      <Device Model="STRFGWX" DeviceId="50" Name="STRFGWX [RACK]">
+         <Network Type="RF"/>
+      </Device>
+      <Device Model="STRFGWX" DeviceId="51" Name="STRFGWX [MASTER BED]">
+         <Network Type="RF"/>
+      </Device>
+      <Device Model="TPS-4500,TPS-4500L" DeviceId="55" Name="TPS-4500 [LIVING RM]"/>
+      <Device Model="CT-1000" DeviceId="56" Name="CT-1000 [KITCHEN]"/>
+      <Device Model="ST-IO" DeviceId="60" Name="ST-IO [ONE]"/>
+      <Device Model="ST-IO" DeviceId="61" Name="ST-IO [TWO]"/>
+      <Device Model="ST-IO" DeviceId="62" Name="ST-IO [THREE]"/>
+   </Network>
+</Device>

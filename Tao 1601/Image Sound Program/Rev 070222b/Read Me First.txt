@@ -1,0 +1,51 @@
+Crestron iPort Read Me Version 3.0 Created on 7/14/06
+
+The file is an archived project file with an example of an stx-1700c as the touch panel and a CP2 as the processor.
+
+The connection to the iPort is a null modem cable. The one provided with your iPort is already set up to work directly with this module.
+
+The port setting are 19200, 8, N, 1.
+
+Please send bug reports to kim@iportmusic.com.
+
+We provide this module for free as an example.
+
+The changes to this module are:
+
+1. Added input for Exit and Enter remote UI mode. This allows a user to use the iPod from the touch screen or eject it our of 2-way mode and control the iPod from the iPod
+2. Auto play. This feature can be turned on or off depending on the desire of the user. The iPod will automatically play what ever was playing last or it will play all 
+songs if no song are in the play back engine.
+3. Direct line select. This feature allows a user to touch on the record they would like to select. It will take them the next list or if it is a song it will play that song
+4. Added the ability to skip multiple records on a button press. This input can be set with a value between 2 and 50. The default is 7.
+5. Added command to iPort firmware to let Crestron know when iPod was removed. iPort REQUIRES FIRMWARE VERSION 1.29 for IW and 1.04 for FS models.
+
+Instruction for how to update firmware are on the support site under delaer login using the password iport232 to access the site.
+
+If you would like other features added to the module please send your requests to Kim@iportmusic.com
+
+Known issues.
+
+1. The songs selection is not in alphabetical order when selecting the songs from the top menu. 
+2. All UTF-8 ASCII character are not supported.
+3. Video output is not supported by the iPod when in 2-way mode. The iPod must be out of 2-way mode to see videos.
+
+Disclaimer
+
+iPort allows you to use this module at your own risk. You bear the entire risk relating to the qaulity and performance of this software. 
+iPort is not liable directly or indirectly of damages resulting from any defect in this software, even if iPort had reason to know of the possibility 
+of such damage. If the software proves to have bugs or defects, you the customer and not iPort, assume the cost of any necessary service or repair. 
+
+We provide this module as a service to you the customer to make integration of iPort to your systems simple and easy. It is our intent that you 
+have a successful experience with our product and the above disclaimer is there for the protection of iPort as a business. It is in no way an inidcation 
+of product reliability.
+
+You may not use this software to resell to other iPort dealers. You may not reverse engineer it to resell or make a profit from this software to other 
+iPort dealers. We provide an RS232 programming manual if you are interested in making your own module at www.iportmusic.com. 
+
+We appreciate your business and look forward to serving you.
+
+Sincerely,
+
+The iPort Team
+
+

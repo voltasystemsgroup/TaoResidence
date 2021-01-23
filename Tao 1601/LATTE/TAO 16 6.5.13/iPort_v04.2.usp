@@ -1,0 +1,6122 @@
+ /*******************************************************************************************
+  SIMPL+ Module Information
+	iPort serial data retrieving
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer: Wojtek
+Comments: Version 4 - Added Video
+		  Version 4.12 - added ipod in sequence, when "ipod present" or "firmware version" is returned
+		  Version 4.2 - compiled for 3-series control systems
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+#SYMBOL_NAME "iPort-v04.2"
+#HINT "iPort-v04.2; compiled for 3-series CS"
+
+#DEFINE_CONSTANT  delaytime 10
+#DEFINE_CONSTANT  cat_main 0
+#DEFINE_CONSTANT  cat_playlist 1
+#DEFINE_CONSTANT  cat_artist 2
+#DEFINE_CONSTANT  cat_album 3 
+#DEFINE_CONSTANT  cat_genre 4 
+#DEFINE_CONSTANT  cat_song 5
+#DEFINE_CONSTANT  cat_composer 6
+#DEFINE_CONSTANT  cat_audiobook 7
+#DEFINE_CONSTANT  cat_podcast 8
+#DEFINE_CONSTANT  path_main 0
+#DEFINE_CONSTANT  path_playlist 1
+#DEFINE_CONSTANT  path_artist 2
+#DEFINE_CONSTANT  path_album 3 
+#DEFINE_CONSTANT  path_genre 4 
+#DEFINE_CONSTANT  path_song 5
+#DEFINE_CONSTANT  path_composer 6
+#DEFINE_CONSTANT  path_audiobook 7
+#DEFINE_CONSTANT  path_podcast 8
+#DEFINE_CONSTANT  menu_state_music 0
+#DEFINE_CONSTANT  menu_state_video 1
+
+
+ 
+// #CATEGORY "" 
+#DEFAULT_VOLATILE
+//#DEFAULT_NONVOLATILE
+#ENABLE_STACK_CHECKING
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional librarys as needed)
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+	DIGITAL_INPUT	music_menu,video_menu,menu,enter,play_pause,up,down,fast_up,fast_down,repeat,repeat_one,
+					repeat_all,repeat_off,shuffle,shuffle_songs,shuffle_albums,shuffle_off,
+					play_curr_sel,play,pause,stop,next_track,prev_track,ffwd,rew,slider_press,
+					disable_notif,play_on_dock,line1_press,line2_press,line3_press,line4_press,
+					line5_press,line6_press,line7_press,line8_press,line9_press,line10_press,
+					line11_press,line12_press,line13_press,line14_press,line15_press,
+					line16_press,line17_press,line18_press,line19_press,line20_press,
+					line21_press,line22_press,line23_press,line24_press,line25_press,
+					line26_press,line27_press,line28_press,line29_press,line30_press,
+					line31_press,line32_press,enter_rem_UI,exit_rem_UI,request_firm_ver;
+ 
+	ANALOG_INPUT	slider_in,fast_num_of_rec,char_in_rec_10to50,num_of_lines_2to32;
+
+				
+
+ 
+// STRING_INPUT
+
+
+	BUFFER_INPUT	data_in$[1000]; 	
+
+
+	DIGITAL_OUTPUT	music_menu_fb,video_menu_fb,out_line1_fb,out_line2_fb,out_line3_fb,out_line4_fb,out_line5_fb,
+					out_line6_fb,out_line7_fb,out_line8_fb,out_line9_fb,out_line10_fb,
+					out_line11_fb,out_line12_fb,out_line13_fb,out_line14_fb,out_line15_fb,
+					out_line16_fb,out_line17_fb,out_line18_fb,out_line19_fb,out_line20_fb,
+					out_line21_fb,out_line22_fb,out_line23_fb,out_line24_fb,out_line25_fb,
+					out_line26_fb,out_line27_fb,out_line28_fb,out_line29_fb,out_line30_fb,
+					out_line31_fb,out_line32_fb,play_fb,pause_fb,stop_fb,ffwd_fb,rew_fb,repeat_one_fb,
+					repeat_all_fb,repeat_off_fb,shuffle_songs_fb,shuffle_albums_fb,
+					shuffle_off_fb,player_fb,browse_fb,ipod_is_in,ipod_is_out,
+
+					remote_UI_mode,local_UI_mode;
+ 	
+
+	ANALOG_OUTPUT	pl_song_index,num_pl_song,total_min,total_sec,total_in_sec,elaps_min,
+					elaps_sec,elaps_in_sec,remain_min,remain_sec,remain_in_sec,time_bar,
+					slider_fb;
+
+
+
+	STRING_OUTPUT	page_title$,out_line1$,out_line2$,out_line3$,out_line4$,
+					out_line5$,out_line6$,out_line7$,out_line8$,out_line9$,out_line10$,
+					out_line11$,out_line12$,out_line13$,out_line14$,out_line15$,out_line16$,
+					out_line17$,out_line18$,out_line19$,out_line20$,out_line21$,out_line22$,
+					out_line23$,out_line24$,out_line25$,out_line26$,out_line27$,out_line28$,
+					out_line29$,out_line30$,out_line31$,out_line32$,playing_album$,
+					playing_title$,playing_artist$,ipod_name$,firmware_ver$,out_to_iport$; 	  				
+
+
+	INTEGER			char_1,char_2,char_3,char_4,char_index,packet_lenght,curr_path,curr_category,
+					num_of_playlists,num_of_artists,num_of_albums,num_of_genres,num_of_songs,
+					num_of_composers,num_of_podcasts,num_of_audiobooks,song_position_b4,
+					song_position_b3,song_position_b2,song_position_b1,song_lenght_b4,
+					song_lenght_b3,song_lenght_b2,song_lenght_b1,analize_in_progres,
+					rec_car_ind_flag,notif_on_flag,ffwd_from_next_flag,rew_from_prev_flag,RxOk,
+					update_player_flag,index_change_flag,menu_state,char_in_rec,num_of_lines,
+					/*shuffle_on_video_flag,*/
+
+					retr_flag,dis_send_retr_rec_flag;
+
+
+	LONG_INTEGER	main_index,playlist_index,artist_index,album_index,song_index,genre_index,
+					composer_index,podcast_index,audiobook_index,curr_index,prev_curr_index,
+					curr_index_disp,prev_index_disp,disp_index,curr_ind_low_lim,curr_ind_up_lim,
+					elaps_time_ms,total_time_ms,remain_time_ms,fast_n_o_r;
+					
+ 
+	STRING			temp$[200],player_page_title$[200],page_title_buf$[200],title_playlist$[200],
+					title_artist$[200],title_album$[200],title_genre$[200],title_composer$[200],
+					title_podcast$[200],title_audiobook$[200],out_line1_buf$[200],
+					out_line2_buf$[200],out_line3_buf$[200],out_line4_buf$[200],
+					out_line5_buf$[200],out_line6_buf$[200],out_line7_buf$[200],
+					out_line8_buf$[200],out_line9_buf$[200],out_line10_buf$[200],
+					out_line11_buf$[200],out_line12_buf$[200],out_line13_buf$[200],
+					out_line14_buf$[200],out_line15_buf$[200],out_line16_buf$[200],
+					out_line17_buf$[200],out_line18_buf$[200],out_line19_buf$[200],
+					out_line20_buf$[200],out_line21_buf$[200],out_line22_buf$[200],
+					out_line23_buf$[200],out_line24_buf$[200],out_line25_buf$[200],
+					out_line26_buf$[200],out_line27_buf$[200],out_line28_buf$[200],
+					out_line29_buf$[200],out_line30_buf$[200],out_line31_buf$[200],
+					out_line32_buf$[200];
+
+
+
+
+
+
+
+/*******************************************************************************************
+
+calculate checksum:
+          
+*******************************************************************************************/
+
+STRING_FUNCTION chsum(STRING out_to_iport_temp$)
+	{
+	INTEGER i,checksum;
+	checksum = 0;
+	FOR (i=2 to LEN(out_to_iport_temp$))
+		{
+		checksum = checksum + BYTE(out_to_iport_temp$,i);
+		};
+	checksum = 256 - checksum UMOD 256;
+	out_to_iport_temp$ = out_to_iport_temp$ + chr(checksum);
+	RETURN (out_to_iport_temp$);
+	}
+
+
+
+/*******************************************************************************************
+
+reset db selection:		ok
+          
+*******************************************************************************************/
+
+Function reset_db_selection()
+
+	{
+	STRING	reset_db_sel$[10],select_sort_db_rec_playlist_song$[14];
+/*
+	reset_db_sel$ = chr(0xFF)+chr(0x55)+chr(0x03)+chr(0x04)+chr(0x00)+chr(0x16)+
+						 chr(0xE3);												//iPod code
+	out_to_iport$ = reset_db_sel$;
+*/
+	reset_db_sel$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+
+						 chr(0x2A)+chr(0x16);									//sonance code
+	out_to_iport$ = reset_db_sel$;
+	delay(delaytime);
+	select_sort_db_rec_playlist_song$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x09)+chr(0x38)+
+										chr(0x3C)+chr(0x04)+chr(0x01)+chr(0x00)+chr(0x00)+
+										chr(0x00)+chr(0x00)+chr(0x04)+chr(0x31);//sort song alph.
+	out_to_iport$ = select_sort_db_rec_playlist_song$;
+	delay(delaytime);
+	}
+
+
+
+
+
+/*******************************************************************************************
+
+reset db selection hierarchy:		ok
+          
+*******************************************************************************************/
+
+Function reset_db_selection_hierarchy()
+
+	{
+	STRING	reset_db_sel_hierarchy$[10];
+
+	reset_db_sel_hierarchy$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+
+						 chr(0x07)+chr(0x02)+chr(0x36);									//sonance code
+	out_to_iport$ = reset_db_sel_hierarchy$;
+	delay(delaytime);
+	}
+
+
+
+
+/*******************************************************************************************
+
+reset curr selection (for current category):		ok
+          
+*******************************************************************************************/
+
+Function reset_curr_selection(INTEGER cat_to_reset)
+
+	{
+	STRING	reset_curr_selection$[13];
+
+	reset_curr_selection$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x08)+chr(0x38)+chr(0x3C)+
+						 chr(0x2B)+chr(cat_to_reset)+chr(0xFF)+chr(0xFF)+chr(0xFF)+chr(0xFF);
+	call chsum(reset_curr_selection$);									//sonance code
+	out_to_iport$ = reset_curr_selection$;
+	delay(delaytime);
+	}
+
+
+
+
+
+
+/*******************************************************************************************
+
+display main lines:		ok
+          
+*******************************************************************************************/
+                                            
+Function display_main_lines()
+
+	{
+	if (menu_state = menu_state_music)
+		{
+		if (num_of_lines >= 8)
+			{
+			out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+			out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+			out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+			out_line4_buf$ = "Songs" ; out_line4$ = out_line4_buf$;
+			out_line5_buf$ = "Podcasts" ; out_line5$ = out_line5_buf$;
+			out_line6_buf$ = "Genres" ; out_line6$ = out_line6_buf$;
+			out_line7_buf$ = "Composers" ; out_line7$ = out_line7_buf$;
+			out_line8_buf$ = "Audiobooks" ; out_line8$ = out_line8_buf$;
+			}
+		else
+			{
+			switch (num_of_lines)
+				{
+				case(2):
+					{
+					if(main_index < 2)
+						{
+						out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+						}
+					else
+						{
+						if(main_index < 4)
+							{
+							out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+							out_line1_buf$ = "Songs" ; out_line1$ = out_line1_buf$;
+							}
+						else
+							{
+							if(main_index < 6)
+								{
+								out_line2_buf$ = "Podcasts" ; out_line2$ = out_line2_buf$;
+								out_line3_buf$ = "Genres" ; out_line3$ = out_line3_buf$;
+								}
+							else
+								{
+								out_line1_buf$ = "Composers" ; out_line1$ = out_line1_buf$;
+								out_line2_buf$ = "Audiobooks" ; out_line2$ = out_line2_buf$;
+								}
+							}
+						};
+					out_line3_buf$ = "" ; out_line3$ = out_line3_buf$;
+					out_line4_buf$ = "" ; out_line4$ = out_line4_buf$;
+					out_line5_buf$ = "" ; out_line5$ = out_line5_buf$;
+					out_line6_buf$ = "" ; out_line6$ = out_line6_buf$;
+					out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+					out_line8_buf$ = "" ; out_line8$ = out_line8_buf$;
+					}
+				case(3):
+					{
+					if(main_index < 3)
+						{
+						out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+						}
+					else
+						{
+						if(main_index < 6)
+							{
+							out_line1_buf$ = "Songs" ; out_line1$ = out_line1_buf$;
+							out_line2_buf$ = "Podcasts" ; out_line2$ = out_line2_buf$;
+							out_line3_buf$ = "Genres" ; out_line3$ = out_line3_buf$;
+							}
+						else
+							{
+							out_line1_buf$ = "Composers" ; out_line1$ = out_line1_buf$;
+							out_line2_buf$ = "Audiobooks" ; out_line2$ = out_line2_buf$;
+							out_line3_buf$ = "" ; out_line3$ = out_line3_buf$;
+							}
+						};
+					out_line4_buf$ = "" ; out_line4$ = out_line4_buf$;
+					out_line5_buf$ = "" ; out_line5$ = out_line5_buf$;
+					out_line6_buf$ = "" ; out_line6$ = out_line6_buf$;
+					out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+					out_line8_buf$ = "" ; out_line8$ = out_line8_buf$;
+					}
+				case(4):
+					{
+					if(main_index < 4)
+						{
+						out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+						out_line4_buf$ = "Songs" ; out_line4$ = out_line4_buf$;
+						}
+					else
+						{
+						out_line1_buf$ = "Podcasts" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Genres" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "Composers" ; out_line3$ = out_line3_buf$;
+						out_line4_buf$ = "Audiobooks" ; out_line4$ = out_line4_buf$;
+						};
+					out_line5_buf$ = "" ; out_line5$ = out_line5_buf$;
+					out_line6_buf$ = "" ; out_line6$ = out_line6_buf$;
+					out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+					out_line8_buf$ = "" ; out_line8$ = out_line8_buf$;
+					}
+				case(5):
+					{
+					if(main_index < 5)
+						{
+						out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+						out_line4_buf$ = "Songs" ; out_line4$ = out_line4_buf$;
+						out_line5_buf$ = "Podcasts" ; out_line5$ = out_line5_buf$;
+						}
+					else
+						{
+						out_line1_buf$ = "Genres" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Composers" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "Audiobooks" ; out_line3$ = out_line3_buf$;
+						out_line4_buf$ = "" ; out_line4$ = out_line4_buf$;
+						out_line5_buf$ = "" ; out_line5$ = out_line5_buf$;
+						};
+					out_line6_buf$ = "" ; out_line6$ = out_line6_buf$;
+					out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+					out_line8_buf$ = "" ; out_line8$ = out_line8_buf$;
+					}
+				case(6):
+					{
+					if(main_index < 6)
+						{
+						out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+						out_line4_buf$ = "Songs" ; out_line4$ = out_line4_buf$;
+						out_line5_buf$ = "Podcasts" ; out_line5$ = out_line5_buf$;
+						out_line6_buf$ = "Genres" ; out_line6$ = out_line6_buf$;
+						}
+					else
+						{
+						out_line1_buf$ = "Composers" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Audiobooks" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "" ; out_line3$ = out_line3_buf$;
+						out_line4_buf$ = "" ; out_line4$ = out_line4_buf$;
+						out_line5_buf$ = "" ; out_line5$ = out_line5_buf$;
+						out_line6_buf$ = "" ; out_line6$ = out_line6_buf$;
+						};
+					out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+					out_line8_buf$ = "" ; out_line8$ = out_line8_buf$;
+					}
+				case(7):
+					{
+					if(main_index < 7)
+						{
+						out_line1_buf$ = "Playlists" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Artists" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "Albums" ; out_line3$ = out_line3_buf$;
+						out_line4_buf$ = "Songs" ; out_line4$ = out_line4_buf$;
+						out_line5_buf$ = "Podcasts" ; out_line5$ = out_line5_buf$;
+						out_line6_buf$ = "Genres" ; out_line6$ = out_line6_buf$;
+						out_line7_buf$ = "Composers" ; out_line7$ = out_line7_buf$;
+						}
+					else
+						{
+						out_line1_buf$ = "Audiobooks" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "" ; out_line3$ = out_line3_buf$;
+						out_line4_buf$ = "" ; out_line4$ = out_line4_buf$;
+						out_line5_buf$ = "" ; out_line5$ = out_line5_buf$;
+						out_line6_buf$ = "" ; out_line6$ = out_line6_buf$;
+						out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+						};
+					out_line8_buf$ = "" ; out_line8$ = out_line8_buf$;
+					}
+				}
+			};
+		}
+	if (menu_state = menu_state_video)
+		{
+		if (num_of_lines >= 4)
+			{
+			out_line1_buf$ = "Movies" ; out_line1$ = out_line1_buf$;
+			out_line2_buf$ = "Music Videos" ; out_line2$ = out_line2_buf$;
+			out_line3_buf$ = "TV Shows" ; out_line3$ = out_line3_buf$;
+			out_line4_buf$ = "Video Podcasts" ; out_line4$ = out_line4_buf$;
+			out_line5_buf$ = "" ; out_line5$ = out_line5_buf$;
+			out_line6_buf$ = "" ; out_line6$ = out_line6_buf$;
+			out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+			out_line8_buf$ = "" ; out_line8$ = out_line8_buf$;
+			}
+		else
+			{
+			switch (num_of_lines)
+				{
+				case(2):
+					{
+					if(main_index < 2)
+						{
+						out_line1_buf$ = "Movies" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Music Videos" ; out_line2$ = out_line2_buf$;
+						}
+					else
+						{
+						if(main_index < 4)
+							{
+							out_line3_buf$ = "TV Shows" ; out_line3$ = out_line3_buf$;
+							out_line1_buf$ = "Video Podcasts" ; out_line1$ = out_line1_buf$;
+							}
+						};
+					out_line3_buf$ = "" ; out_line3$ = out_line3_buf$;
+					out_line4_buf$ = "" ; out_line4$ = out_line4_buf$;
+					out_line5_buf$ = "" ; out_line5$ = out_line5_buf$;
+					out_line6_buf$ = "" ; out_line6$ = out_line6_buf$;
+					out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+					out_line8_buf$ = "" ; out_line8$ = out_line8_buf$;
+					}
+				case(3):
+					{
+					if(main_index < 3)
+						{
+						out_line1_buf$ = "Movies" ; out_line1$ = out_line1_buf$;
+						out_line2_buf$ = "Music Videos" ; out_line2$ = out_line2_buf$;
+						out_line3_buf$ = "TV Shows" ; out_line3$ = out_line3_buf$;
+						}
+					else
+						{
+						if(main_index < 6)
+							{
+							out_line1_buf$ = "Video Podcasts" ; out_line1$ = out_line1_buf$;
+							out_line2_buf$ = "" ; out_line2$ = out_line2_buf$;
+							out_line3_buf$ = "" ; out_line3$ = out_line3_buf$;
+							}
+						};
+					out_line4_buf$ = "" ; out_line4$ = out_line4_buf$;
+					out_line5_buf$ = "" ; out_line5$ = out_line5_buf$;
+					out_line6_buf$ = "" ; out_line6$ = out_line6_buf$;
+					out_line7_buf$ = "" ; out_line7$ = out_line7_buf$;
+					out_line8_buf$ = "" ; out_line8$ = out_line8_buf$;
+					}
+				}
+			}
+		}
+	out_line9_buf$ = "" ; out_line9$ = out_line9_buf$;
+	out_line10_buf$ = "" ; out_line10$ = out_line10_buf$;
+	out_line11_buf$ = "" ; out_line11$ = out_line11_buf$;
+	out_line12_buf$ = "" ; out_line12$ = out_line12_buf$;
+	out_line13_buf$ = "" ; out_line13$ = out_line13_buf$;
+	out_line14_buf$ = "" ; out_line14$ = out_line14_buf$;
+	out_line15_buf$ = "" ; out_line15$ = out_line15_buf$;
+	out_line16_buf$ = "" ; out_line16$ = out_line16_buf$;
+	out_line17_buf$ = "" ; out_line17$ = out_line17_buf$;
+	out_line18_buf$ = "" ; out_line18$ = out_line18_buf$;
+	out_line19_buf$ = "" ; out_line19$ = out_line19_buf$;
+	out_line20_buf$ = "" ; out_line20$ = out_line20_buf$;
+	out_line21_buf$ = "" ; out_line21$ = out_line21_buf$;
+	out_line22_buf$ = "" ; out_line22$ = out_line22_buf$;
+	out_line23_buf$ = "" ; out_line23$ = out_line23_buf$;
+	out_line24_buf$ = "" ; out_line24$ = out_line24_buf$;
+	out_line25_buf$ = "" ; out_line25$ = out_line25_buf$;
+	out_line26_buf$ = "" ; out_line26$ = out_line26_buf$;
+	out_line27_buf$ = "" ; out_line27$ = out_line27_buf$;
+	out_line28_buf$ = "" ; out_line28$ = out_line28_buf$;
+	out_line29_buf$ = "" ; out_line29$ = out_line29_buf$;
+	out_line30_buf$ = "" ; out_line30$ = out_line30_buf$;
+	out_line31_buf$ = "" ; out_line31$ = out_line31_buf$;
+	out_line32_buf$ = "" ; out_line32$ = out_line32_buf$;
+	}
+
+/*******************************************************************************************
+
+start condition:		ok
+          
+*******************************************************************************************/
+                                            
+Function Main()
+
+	{
+
+	page_title$ = "Music";
+	call display_main_lines();
+	call reset_db_selection();
+	delay(delaytime);
+	data_in$ = "";
+	char_1 = 0;
+	char_2 = 0;
+	char_3 = 0;
+	packet_lenght = 10;
+	main_index = 0;
+	playlist_index = 1;
+	artist_index = -1;
+	album_index = -1;
+	song_index = 0;
+	podcast_index = 0;
+	genre_index = -1;
+	composer_index = -1;
+	audiobook_index = 0;
+	disp_index = 0;
+	curr_category = 0;
+	curr_index = 0;
+	curr_ind_up_lim = 7;
+	stop_fb = 1;
+	browse_fb = 1;
+	player_fb = 0;
+	repeat_one_fb = 0;
+	repeat_all_fb = 0;
+	repeat_off_fb = 1;
+	shuffle_songs_fb = 0;
+	shuffle_albums_fb = 0;
+	shuffle_off_fb = 1;
+	out_line1_fb = 1;													//update disp fb
+	out_line2_fb = 0;
+	out_line3_fb = 0;
+	out_line4_fb = 0;
+	out_line5_fb = 0;
+	out_line6_fb = 0;
+	out_line7_fb = 0;
+	out_line8_fb = 0;
+	out_line9_fb = 0;
+	slider_fb = 65535;
+	total_sec = 1;
+	ipod_is_in = 0;
+	ipod_is_out = 1;
+	if (char_in_rec_10to50 < 10) char_in_rec = 21;
+	if (char_in_rec_10to50 > 50) char_in_rec = 61;
+	if ((char_in_rec_10to50 >= 10)&&(char_in_rec_10to50 <= 50))
+		{
+		char_in_rec = (char_in_rec_10to50 + 11);
+		};
+	if (num_of_lines_2to32 < 2) num_of_lines = 2;
+	if (num_of_lines_2to32 > 32) num_of_lines = 32;
+	if ((num_of_lines_2to32 >= 2)&&(num_of_lines_2to32 <= 32))
+		{
+		num_of_lines = (num_of_lines_2to32);
+		};
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x15)
+					+chr(0x02)+chr(0x28);		//transport stop
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x12)
+					+chr(0x00)+chr(0x2D);		//shuffle off
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x0D)
+					+chr(0x00)+chr(0x32);		//repeat off
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x28)
+					+chr(0x18);					//get ipod name
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x10)
+					+chr(0x30);					//get shuffle
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x13)
+					+chr(0x2D);					//get repeat
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x20)
+					+chr(0x20);					//get play status
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x4D)+chr(0x00)+chr(0x04)+chr(0x01)+chr(0x00)+chr(0x06)
+					+chr(0x00)+chr(0xA8);		//get dock status
+	delay(delaytime);
+	}
+
+
+
+/*******************************************************************************************
+
+send shuffle:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_shuffle(INTEGER ssh_code)			//ssh_code:00=off,01=songs,02=albums
+	{
+	INTEGER	ssh_check_sum;
+	ssh_check_sum = 256 - ((0xBD+0x04+0x12+ssh_code) UMOD 256);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x12)
+					+chr(ssh_code)+chr(ssh_check_sum);
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x10)
+					+chr(0x30);					//get shuffle
+	delay(delaytime);
+	}
+
+
+
+
+
+/*******************************************************************************************
+
+send repeat:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_repeat(INTEGER srp_code)			//srp_code:00=off,01=one_track,02=all
+	{
+
+	INTEGER	srp_check_sum;
+
+	srp_check_sum = 256 - ((0xBD+0x04+0x0D+srp_code) UMOD 256);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x0D)
+					+chr(srp_code)+chr(srp_check_sum);
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x13)
+					+chr(0x2D);					//get repeat
+	delay(delaytime);
+	}
+
+/*******************************************************************************************
+
+send get ipod name:		ok
+          
+*******************************************************************************************/
+
+FUNCTION send_get_ipod_name()
+
+	{
+	STRING	get_ipod_name$[10];
+
+	get_ipod_name$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+
+						 chr(0x28)+chr(0x18);
+	out_to_iport$ = get_ipod_name$;
+	delay(delaytime);
+	}
+
+
+/*******************************************************************************************
+
+page title from line(curr display)$:		ok
+          
+*******************************************************************************************/
+
+
+
+FUNCTION page_title_from_line$()
+
+	{
+	if (curr_index = -1)
+		{
+		if (menu_state = menu_state_music)
+			{
+			switch (curr_category)
+				{
+				case(cat_artist) : {page_title_buf$ = "All Albums" ; page_title$ = page_title_buf$;}
+				case(cat_album) : {page_title_buf$ = "All Songs" ; page_title$ = page_title_buf$;}
+				case(cat_genre) : {page_title_buf$ = "All Artists" ; page_title$ = page_title_buf$;}
+				case(cat_composer) : {page_title_buf$ = "All Albums" ; page_title$ = page_title_buf$;}
+				}
+			};
+		if (menu_state = menu_state_video)
+			{
+			switch (curr_category)
+				{
+				case(cat_artist) : {page_title_buf$ = "All" ; page_title$ = page_title_buf$;}
+				case(cat_album) : {page_title_buf$ = "All" ; page_title$ = page_title_buf$;}
+				}
+			};
+		}
+	else
+		{
+		switch (disp_index)
+			{
+			case(0):
+				{
+				page_title_buf$ = out_line1_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(1):
+				{
+				page_title_buf$ = out_line2_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(2):
+				{
+				page_title_buf$ = out_line3_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(3):
+				{
+				page_title_buf$ = out_line4_buf$;
+				page_title$ = page_title_buf$;
+				}		
+			case(4):
+				{
+				page_title_buf$ = out_line5_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(5):
+				{
+				page_title_buf$ = out_line6_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(6):
+				{
+				page_title_buf$ = out_line7_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(7):
+				{
+				page_title_buf$ = out_line8_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(8):
+				{
+				page_title_buf$ = out_line9_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(9):
+				{
+				page_title_buf$ = out_line10_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(10):
+				{
+				page_title_buf$ = out_line11_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(11):
+				{
+				page_title_buf$ = out_line12_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(12):
+				{
+				page_title_buf$ = out_line13_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(13):
+				{
+				page_title_buf$ = out_line14_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(14):
+				{
+				page_title_buf$ = out_line15_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(15):
+				{
+				page_title_buf$ = out_line16_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(16):
+				{
+				page_title_buf$ = out_line17_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(17):
+				{
+				page_title_buf$ = out_line18_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(18):
+				{
+				page_title_buf$ = out_line19_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(19):
+				{
+				page_title_buf$ = out_line20_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(20):
+				{
+				page_title_buf$ = out_line21_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(21):
+				{
+				page_title_buf$ = out_line22_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(22):
+				{
+				page_title_buf$ = out_line23_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(23):
+				{
+				page_title_buf$ = out_line24_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(24):
+				{
+				page_title_buf$ = out_line25_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(25):
+				{
+				page_title_buf$ = out_line26_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(26):
+				{
+				page_title_buf$ = out_line27_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(27):
+				{
+				page_title_buf$ = out_line28_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(28):
+				{
+				page_title_buf$ = out_line29_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(29):
+				{
+				page_title_buf$ = out_line30_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(30):
+				{
+				page_title_buf$ = out_line31_buf$;
+				page_title$ = page_title_buf$;
+				}
+			case(31):
+				{
+				page_title_buf$ = out_line32_buf$;
+				page_title$ = page_title_buf$;
+				}
+			}
+		};
+	switch (curr_category)
+		{
+		case(cat_playlist) : title_playlist$ = page_title_buf$;
+		case(cat_artist) : title_artist$ = page_title_buf$;
+		case(cat_album) : title_album$ = page_title_buf$;
+		case(cat_podcast) : title_podcast$ = page_title_buf$;
+		case(cat_genre) : title_genre$ = page_title_buf$;
+		case(cat_composer) : title_composer$ = page_title_buf$;
+		case(cat_audiobook) : title_audiobook$ = page_title_buf$;
+		};
+	processlogic();
+	}
+
+
+
+/*******************************************************************************************
+
+send play current selection:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_play_cur_sel()
+	{
+
+	INTEGER	spcs_index_display_b1,spcs_index_display_b2,spcs_index_display_b3,spcs_index_display_b4,
+			spcs_check_sum;
+
+
+	if (curr_category <> cat_song)
+		{
+		spcs_index_display_b4 = 0;
+		spcs_index_display_b3 = 0;
+		spcs_index_display_b2 = 0;
+		spcs_index_display_b1 = 0;
+		}
+	else
+		{
+		spcs_index_display_b4 = ((curr_index) / 65536)/ 256;
+		spcs_index_display_b3 = ((curr_index) / 65536) UMOD 256;
+		spcs_index_display_b2 = ((curr_index) UMOD 65536)/ 256;
+		spcs_index_display_b1 = ((curr_index) UMOD 65536) UMOD 256;
+		};
+	spcs_check_sum = 256 - ((0xBD+0x07+0x14+spcs_index_display_b4+spcs_index_display_b3
+					+spcs_index_display_b2+spcs_index_display_b1) UMOD 256);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x07)+chr(0x38)+chr(0x3C)+chr(0x14)
+					+chr(spcs_index_display_b4)+chr(spcs_index_display_b3)
+					+chr(spcs_index_display_b2)+chr(spcs_index_display_b1)+chr(spcs_check_sum);
+	delay(delaytime);
+	}
+
+
+/*******************************************************************************************
+
+clear plater display:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION clear_player_display ()
+	{
+	playing_album$ = "";
+	playing_title$ = "";
+	playing_artist$ = "";
+	}
+
+
+/*******************************************************************************************
+
+send retrieve categorized db record:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_retr_recs (LONG_INTEGER srr_start_index)
+ 
+	{
+
+	INTEGER		srr_index_display_b1,srr_index_display_b2,srr_index_display_b3,
+				srr_index_display_b4,srr_num_of_rec,srr_check_sum;
+
+	STRING		srr_retr_cat_db_rec$[20];
+
+
+	if((srr_start_index + num_of_lines) > curr_ind_up_lim)
+		{
+		srr_num_of_rec = (curr_ind_up_lim - srr_start_index + 1) UMOD 65536;
+		switch (srr_num_of_rec)
+			{
+			case(1):{out_line2$="";out_line3$="";out_line4$="";out_line5$="";out_line6$="";
+					out_line7$="";out_line8$="";out_line9$="";out_line10$="";out_line11$="";
+					out_line12$="";out_line13$="";out_line14$="";out_line15$="";out_line16$="";
+					out_line17$="";out_line18$="";out_line19$="";out_line20$="";out_line21$="";
+					out_line22$="";out_line23$="";out_line24$="";out_line25$="";out_line26$="";
+					out_line27$="";out_line28$="";out_line29$="";out_line30$="";out_line31$="";
+					out_line32$="";}
+			case(2):{out_line3$="";out_line4$="";out_line5$="";out_line6$="";
+					out_line7$="";out_line8$="";out_line9$="";out_line10$="";
+					out_line11$="";out_line12$="";out_line13$="";out_line14$="";
+					out_line15$="";out_line16$="";out_line17$="";out_line18$="";
+					out_line19$="";out_line20$="";out_line21$="";out_line22$="";
+					out_line23$="";out_line24$="";out_line25$="";out_line26$="";
+					out_line27$="";out_line28$="";out_line29$="";out_line30$="";
+					out_line31$="";out_line32$="";}
+			case(3):{out_line4$="";out_line5$="";out_line6$="";out_line7$="";
+					out_line8$="";out_line9$="";out_line10$="";out_line11$="";
+					out_line12$="";out_line13$="";out_line14$="";out_line15$="";
+					out_line16$="";out_line17$="";out_line18$="";out_line19$="";
+					out_line20$="";out_line21$="";out_line22$="";out_line23$="";
+					out_line24$="";out_line25$="";out_line26$="";out_line27$="";
+					out_line28$="";out_line29$="";out_line30$="";out_line31$="";
+					out_line32$="";}
+			case(4):{out_line5$="";out_line6$="";out_line7$="";out_line8$="";
+					out_line9$="";out_line10$="";out_line11$="";out_line12$="";
+					out_line13$="";out_line14$="";out_line15$="";out_line16$="";
+					out_line17$="";out_line18$="";out_line19$="";out_line20$="";
+					out_line21$="";out_line22$="";out_line23$="";out_line24$="";
+					out_line25$="";out_line26$="";out_line27$="";out_line28$="";
+					out_line29$="";out_line30$="";out_line31$="";out_line32$="";}
+			case(5):{out_line6$="";out_line7$="";out_line8$="";out_line9$="";
+					out_line10$="";out_line11$="";out_line12$="";out_line13$="";
+					out_line14$="";out_line15$="";out_line16$="";out_line17$="";
+					out_line18$="";out_line19$="";out_line20$="";out_line21$="";
+					out_line22$="";out_line23$="";out_line24$="";out_line25$="";
+					out_line26$="";out_line27$="";out_line28$="";out_line29$="";
+					out_line30$="";out_line31$="";out_line32$="";}
+			case(6):{out_line7$="";out_line8$="";out_line9$="";out_line10$="";
+					out_line11$="";out_line12$="";out_line13$="";out_line14$="";
+					out_line15$="";out_line16$="";out_line17$="";out_line18$="";
+					out_line19$="";out_line20$="";out_line21$="";out_line22$="";
+					out_line23$="";out_line24$="";out_line25$="";out_line26$="";
+					out_line27$="";out_line28$="";out_line29$="";out_line30$="";
+					out_line31$="";out_line32$="";}
+			case(7):{out_line8$="";out_line9$="";out_line10$="";out_line11$="";
+					out_line12$="";out_line13$="";out_line14$="";out_line15$="";
+					out_line16$="";out_line17$="";out_line18$="";out_line19$="";
+					out_line20$="";out_line21$="";out_line22$="";out_line23$="";
+					out_line24$="";out_line25$="";out_line26$="";out_line27$="";
+					out_line28$="";out_line29$="";out_line30$="";out_line31$="";
+					out_line32$="";}
+			case(8):{out_line9$="";out_line10$="";out_line11$="";out_line12$="";
+					out_line13$="";out_line14$="";out_line15$="";out_line16$="";
+					out_line17$="";out_line18$="";out_line19$="";out_line20$="";
+					out_line21$="";out_line22$="";out_line23$="";out_line24$="";
+					out_line25$="";out_line26$="";out_line27$="";out_line28$="";
+					out_line29$="";out_line30$="";out_line31$="";out_line32$="";}
+			case(9):{out_line10$="";out_line11$="";out_line12$="";out_line13$="";
+					out_line14$="";out_line15$="";out_line16$="";out_line17$="";
+					out_line18$="";out_line19$="";out_line20$="";out_line21$="";
+					out_line22$="";out_line23$="";out_line24$="";out_line25$="";
+					out_line26$="";out_line27$="";out_line28$="";out_line29$="";
+					out_line30$="";out_line31$="";out_line32$="";}
+			case(10):{out_line11$="";out_line12$="";out_line13$="";out_line14$="";
+					out_line15$="";out_line16$="";out_line17$="";out_line18$="";
+					out_line19$="";out_line20$="";out_line21$="";out_line22$="";
+					out_line23$="";out_line24$="";out_line25$="";out_line26$="";
+					out_line27$="";out_line28$="";out_line29$="";out_line30$="";
+					out_line31$="";out_line32$="";}
+			case(11):{out_line12$="";out_line13$="";out_line14$="";out_line15$="";
+					out_line16$="";out_line17$="";out_line18$="";out_line19$="";
+					out_line20$="";out_line21$="";out_line22$="";out_line23$="";
+					out_line24$="";out_line25$="";out_line26$="";out_line27$="";
+					out_line28$="";out_line29$="";out_line30$="";out_line31$="";
+					out_line32$="";}
+			case(12):{out_line13$="";out_line14$="";out_line15$="";out_line16$="";
+					out_line17$="";out_line18$="";out_line19$="";out_line20$="";
+					out_line21$="";out_line22$="";out_line23$="";out_line24$="";
+					out_line25$="";out_line26$="";out_line27$="";out_line28$="";
+					out_line29$="";out_line30$="";out_line31$="";out_line32$="";}
+			case(13):{out_line14$="";out_line15$="";out_line16$="";out_line17$="";
+					out_line18$="";out_line19$="";out_line20$="";out_line21$="";
+					out_line22$="";out_line23$="";out_line24$="";out_line25$="";
+					out_line26$="";out_line27$="";out_line28$="";out_line29$="";
+					out_line30$="";out_line31$="";out_line32$="";}
+			case(14):{out_line15$="";out_line16$="";out_line17$="";out_line18$="";
+					out_line19$="";out_line20$="";out_line21$="";out_line22$="";
+					out_line23$="";out_line24$="";out_line25$="";out_line26$="";
+					out_line27$="";out_line28$="";out_line29$="";out_line30$="";
+					out_line31$="";out_line32$="";}
+			case(15):{out_line16$="";out_line17$="";out_line18$="";out_line19$="";
+					out_line20$="";out_line21$="";out_line22$="";out_line23$="";
+					out_line24$="";out_line25$="";out_line26$="";out_line27$="";
+					out_line28$="";out_line29$="";out_line30$="";out_line31$="";
+					out_line32$="";}
+			case(16):{out_line17$="";out_line18$="";out_line19$="";out_line20$="";
+					out_line21$="";out_line22$="";out_line23$="";out_line24$="";
+					out_line25$="";out_line26$="";out_line27$="";out_line28$="";
+					out_line29$="";out_line30$="";out_line31$="";out_line32$="";}
+			case(17):{out_line18$="";out_line19$="";out_line20$="";out_line21$="";
+					out_line22$="";out_line23$="";out_line24$="";out_line25$="";
+					out_line26$="";out_line27$="";out_line28$="";out_line29$="";
+					out_line30$="";out_line31$="";out_line32$="";}
+			case(18):{out_line19$="";out_line20$="";out_line21$="";out_line22$="";
+					out_line23$="";out_line24$="";out_line25$="";out_line26$="";
+					out_line27$="";out_line28$="";out_line29$="";out_line30$="";
+					out_line31$="";out_line32$="";}
+			case(19):{out_line20$="";out_line21$="";out_line22$="";out_line23$="";
+					out_line24$="";out_line25$="";out_line26$="";out_line27$="";
+					out_line28$="";out_line29$="";out_line30$="";out_line31$="";
+					out_line32$="";}
+			case(20):{out_line21$="";out_line22$="";out_line23$="";out_line24$="";
+					out_line25$="";out_line26$="";out_line27$="";out_line28$="";
+					out_line29$="";out_line30$="";out_line31$="";out_line32$="";}
+			case(21):{out_line22$="";out_line23$="";out_line24$="";out_line25$="";
+					out_line26$="";out_line27$="";out_line28$="";out_line29$="";
+					out_line30$="";out_line31$="";out_line32$="";}
+			case(22):{out_line23$="";out_line24$="";out_line25$="";out_line26$="";
+					out_line27$="";out_line28$="";out_line29$="";out_line30$="";
+					out_line31$="";out_line32$="";}
+			case(23):{out_line24$="";out_line25$="";out_line26$="";out_line27$="";
+					out_line28$="";out_line29$="";out_line30$="";out_line31$="";
+					out_line32$="";}
+			case(24):{out_line25$="";out_line26$="";out_line27$="";out_line28$="";
+					out_line29$="";out_line30$="";out_line31$="";out_line32$="";}
+			case(25):{out_line26$="";out_line27$="";out_line28$="";out_line29$="";
+					out_line30$="";out_line31$="";out_line32$="";}
+			case(26):{out_line27$="";out_line28$="";out_line29$="";out_line30$="";
+					out_line31$="";out_line32$="";}
+			case(27):{out_line28$="";out_line29$="";out_line30$="";out_line31$="";
+					out_line32$="";}
+			case(28):{out_line29$="";out_line30$="";out_line31$="";out_line32$="";}
+			case(29):{out_line30$="";out_line31$="";out_line32$="";}
+			case(30):{out_line31$="";out_line32$="";}
+			case(31):{out_line32$="";}
+			};
+		}
+	else srr_num_of_rec = num_of_lines;
+	srr_index_display_b4 = ((srr_start_index) / 65536)/ 256;
+	srr_index_display_b3 = ((srr_start_index) / 65536) UMOD 256;
+	srr_index_display_b2 = ((srr_start_index) UMOD 65536)/ 256;
+	srr_index_display_b1 = ((srr_start_index) UMOD 65536) UMOD 256;
+	srr_check_sum = 256 - ((0xBD+0x0C+0x26+curr_category+srr_index_display_b4
+					+srr_index_display_b3+srr_index_display_b2+srr_index_display_b1
+					+srr_num_of_rec) UMOD 256);
+	srr_retr_cat_db_rec$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x0C)+chr(0x38)+chr(0x3C)
+						+chr(0x26)+chr(curr_category)+chr(srr_index_display_b4)
+						+chr(srr_index_display_b3)+chr(srr_index_display_b2)
+						+chr(srr_index_display_b1)+chr(0x00)+chr(0x00)+chr(0x00)
+						+chr(srr_num_of_rec)+chr(srr_check_sum);
+	out_to_iport$ = srr_retr_cat_db_rec$;
+	delay(delaytime);
+
+	}
+
+
+/*******************************************************************************************
+
+update display index and records:		ok
+          
+*******************************************************************************************/
+
+FUNCTION update_dis_ind_rec()
+
+	{
+	disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;					//update disp index					
+	if ((((curr_index) - (curr_ind_low_lim)) <
+		(prev_index_disp)||
+		((curr_index - curr_ind_low_lim) > (prev_index_disp + num_of_lines - 1)))&&
+		(!dis_send_retr_rec_flag))
+		{
+		switch (curr_category)
+			{
+			case(cat_main):
+				{					
+				call display_main_lines();
+				}
+			case(cat_song):
+				{
+				call send_retr_recs (curr_index_disp);
+				}
+			case(cat_podcast):
+				{
+				call send_retr_recs (curr_index_disp);
+				}
+			case(cat_audiobook):
+				{
+				call send_retr_recs (curr_index_disp);
+				}
+			case(cat_playlist):
+				{
+				call send_retr_recs (curr_index_disp + 1);
+				}
+			case(cat_artist):
+				{
+				if((curr_index < (num_of_lines - 1))||(curr_index = -1))
+					{
+					call send_retr_recs (curr_index_disp);
+					}
+				else
+					{
+					call send_retr_recs (curr_index_disp -1);
+					};
+				}
+			case(cat_album):
+				{
+				if((curr_index < (num_of_lines - 1))||(curr_index = -1))
+					{
+					call send_retr_recs (curr_index_disp);
+					}
+				else
+					{
+					call send_retr_recs (curr_index_disp -1);
+					};
+				}
+			case(cat_genre):
+				{
+				if (menu_state = menu_state_music)
+					{
+					if((curr_index < (num_of_lines - 1))||(curr_index = -1))
+						{
+						call send_retr_recs (curr_index_disp);
+						}
+					else
+						{
+						call send_retr_recs (curr_index_disp -1);
+						};
+					};
+				if (menu_state = menu_state_video)
+					{
+					call send_retr_recs (curr_index_disp);
+					};
+				}
+			case(cat_composer):
+				{
+				if((curr_index < (num_of_lines - 1))||(curr_index = -1))
+					{
+					call send_retr_recs (curr_index_disp);
+					}
+				else
+					{
+					call send_retr_recs (curr_index_disp -1);
+					};
+				}
+			};
+		};
+	switch (menu_state)
+		{
+		case(menu_state_music):
+			{
+			if (((curr_category = cat_artist||curr_category = cat_album||
+				curr_category = cat_genre||curr_category = cat_composer))&&
+				(curr_index_disp = 0))
+				{
+				out_line1_buf$ = "All" ; out_line1$ = out_line1_buf$;
+				};														//update disp records
+			}
+		case(menu_state_video):
+			{
+			if (((curr_category = cat_artist)&&(genre_index=1))&&
+				(curr_index_disp = 0))
+				{
+				out_line1_buf$ = "All" ; out_line1$ = out_line1_buf$;
+				};
+			}
+		};
+	out_line1_fb = 0;													//update disp fb
+	out_line2_fb = 0;
+	out_line3_fb = 0;
+	out_line4_fb = 0;
+	out_line5_fb = 0;
+	out_line6_fb = 0;
+	out_line7_fb = 0;
+	out_line8_fb = 0;
+	out_line9_fb = 0;
+	out_line10_fb = 0;
+	out_line11_fb = 0;
+	out_line12_fb = 0;
+	out_line13_fb = 0;
+	out_line14_fb = 0;
+	out_line15_fb = 0;
+	out_line16_fb = 0;
+	out_line17_fb = 0;
+	out_line18_fb = 0;
+	out_line19_fb = 0;
+	out_line20_fb = 0;
+	out_line21_fb = 0;
+	out_line22_fb = 0;
+	out_line23_fb = 0;
+	out_line24_fb = 0;
+	out_line25_fb = 0;
+	out_line26_fb = 0;
+	out_line27_fb = 0;
+	out_line28_fb = 0;
+	out_line29_fb = 0;
+	out_line30_fb = 0;
+	out_line31_fb = 0;
+	out_line32_fb = 0;
+	switch (disp_index)
+		{
+		case(0):
+			out_line1_fb = 1;
+		case(1):
+			out_line2_fb = 1;
+		case(2):
+			out_line3_fb = 1;
+		case(3):
+			out_line4_fb = 1;
+		case(4):
+			out_line5_fb = 1;
+		case(5):
+			out_line6_fb = 1;
+		case(6):
+			out_line7_fb = 1;
+		case(7):
+			out_line8_fb = 1;
+		case(8):
+			out_line9_fb = 1;
+		case(9):
+			out_line10_fb = 1;
+		case(10):
+			out_line11_fb = 1;
+		case(11):
+			out_line12_fb = 1;
+		case(12):
+			out_line13_fb = 1;
+		case(13):
+			out_line14_fb = 1;
+		case(14):
+			out_line15_fb = 1;
+		case(15):
+			out_line16_fb = 1;
+		case(16):
+			out_line17_fb = 1;
+		case(17):
+			out_line18_fb = 1;
+		case(18):
+			out_line19_fb = 1;
+		case(19):
+			out_line20_fb = 1;
+		case(20):
+			out_line21_fb = 1;
+		case(21):
+			out_line22_fb = 1;
+		case(22):
+			out_line23_fb = 1;
+		case(23):
+			out_line24_fb = 1;
+		case(24):
+			out_line25_fb = 1;
+		case(25):
+			out_line26_fb = 1;
+		case(26):
+			out_line27_fb = 1;
+		case(27):
+			out_line28_fb = 1;
+		case(28):
+			out_line29_fb = 1;
+		case(29):
+			out_line30_fb = 1;
+		case(30):
+			out_line31_fb = 1;
+		case(31):
+			out_line32_fb = 1;
+
+		};
+	dis_send_retr_rec_flag = 0;
+	processlogic();
+	}
+
+
+
+/*******************************************************************************************
+
+update starting index display:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION update_curr_ind_disp()
+	{
+	if (curr_category = cat_playlist)
+		{
+		if((curr_index < (num_of_lines + 1))||(curr_index = -1)) curr_index_disp = 0;
+		else curr_index_disp = ((curr_index - curr_ind_low_lim)/num_of_lines)*num_of_lines;
+		}
+	else curr_index_disp = ((curr_index - curr_ind_low_lim)/num_of_lines)*num_of_lines;
+	}
+
+
+/*******************************************************************************************
+
+send transport command:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_transport (INTEGER str_code) 
+	{
+
+	INTEGER	str_check_sum;
+
+	STRING	str_send_transport$[9];
+
+
+	str_check_sum = 256 - ((0xBD+0x04+0x15+str_code) UMOD 256);
+	str_send_transport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+chr(0x15)
+						  +chr(str_code)+chr(str_check_sum);
+	out_to_iport$ = str_send_transport$;
+	delay(delaytime);
+	}
+
+
+/*******************************************************************************************
+
+send get play status:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_get_play_status()			//updates song position & lenght, cancel waits
+	{
+
+	STRING 			gpst_get_play_status$[8];
+
+
+	gpst_get_play_status$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)
+							+chr(0x20)+chr(0x20);
+	out_to_iport$ = gpst_get_play_status$;
+	delay(delaytime);
+	}
+
+
+/*******************************************************************************************
+
+send get num of playing song:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_get_num_pl_song()
+	{
+
+	STRING 			gnps_get_num_pl_song$[8];
+
+	gnps_get_num_pl_song$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)
+							+chr(0x09)+chr(0x37);
+	out_to_iport$ = gnps_get_num_pl_song$;
+	delay(delaytime);
+	}
+
+
+/*******************************************************************************************
+
+send get playing song index:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_get_pl_song_index()
+	{
+
+	STRING 		get_pl_song_index$[8];
+
+
+	get_pl_song_index$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+
+						 chr(0x22)+chr(0x1E);
+	out_to_iport$ = get_pl_song_index$;
+	delay(delaytime);
+	}
+
+
+/*******************************************************************************************
+
+send turn on notification:		ok
+          
+*******************************************************************************************/
+
+
+
+FUNCTION turn_on_notif()
+
+	{
+	STRING 		turn_on_notif$[9];
+
+
+	turn_on_notif$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+
+						 chr(0x1A)+chr(0x01)+chr(0x24);
+	out_to_iport$ = turn_on_notif$;
+	delay(delaytime);
+	}
+
+/*******************************************************************************************
+
+send turn off notification:		ok
+          
+*******************************************************************************************/
+
+
+
+FUNCTION turn_off_notif()
+
+	{
+	STRING 		turn_off_notif$[9];
+
+
+	turn_off_notif$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+
+						 chr(0x1A)+chr(0x00)+chr(0x25);
+	out_to_iport$ = turn_off_notif$;
+	delay(delaytime);
+	}
+
+
+
+/*******************************************************************************************
+
+send select DB record:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_sel_db_rec()
+	{
+    
+	STRING sel_db_rec$[50];
+
+	INTEGER ssdr_index_select_b1,ssdr_index_select_b2,ssdr_index_select_b3,
+			ssdr_index_select_b4,ssdr_check_sum;
+
+	IF ((curr_index >= 0)&&(curr_index <> -1))
+		{
+		ssdr_index_select_b4 = ((curr_index) / 65536) / 256;
+		ssdr_index_select_b3 = ((curr_index) / 65536) UMOD 256;
+		ssdr_index_select_b2 = ((curr_index) UMOD 65536) / 256;
+		ssdr_index_select_b1 = ((curr_index) UMOD 65536) UMOD 256;
+		ssdr_check_sum = 256 - ((0xBD+0x08+0x2B+curr_category+ssdr_index_select_b4
+					+ssdr_index_select_b3+ssdr_index_select_b2+ssdr_index_select_b1) UMOD 256);
+		sel_db_rec$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x08)+chr(0x38)+chr(0x3C)+chr(0x2B)
+						+chr(curr_category)+chr(ssdr_index_select_b4)+chr(ssdr_index_select_b3)
+						+chr(ssdr_index_select_b2)+chr(ssdr_index_select_b1)+chr(ssdr_check_sum);
+		out_to_iport$ = sel_db_rec$;
+		delay(delaytime);
+		};
+	}
+
+
+
+/*******************************************************************************************
+
+send get number of categorized db records:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION send_get_num_cat_rec()
+
+	{
+	INTEGER 	sgncr_check_sum;
+	STRING 		sgncr_get_num_of_rec$[10];
+
+
+	sgncr_check_sum = 256 - ((0xBD+0x04+0x24+curr_category) UMOD 256);
+	sgncr_get_num_of_rec$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x04)+chr(0x38)+chr(0x3C)+
+						 chr(0x24)+chr(curr_category)+chr(sgncr_check_sum);
+	out_to_iport$ = sgncr_get_num_of_rec$;
+	delay(delaytime);
+	}
+
+
+
+/*******************************************************************************************
+
+calculate song lenght:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION calc_song_lenght ()
+	{
+	total_time_ms = (256*song_lenght_b4+song_lenght_b3)*65536+(256*song_lenght_b2)
+					+song_lenght_b1;
+	total_min = (total_time_ms/60000) UMOD 65536;
+	total_sec = (total_time_ms/1000) UMOD 60;
+	total_in_sec = (total_time_ms/1000) UMOD 65536;
+	processlogic();
+	}
+
+
+
+/*******************************************************************************************
+
+calculate song position (elapse time, remain time, time bar):		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION calc_song_position ()
+	{
+	elaps_time_ms = (256*song_position_b4+song_position_b3)*65536+(256*song_position_b2)
+					+song_position_b1;
+	elaps_min = (elaps_time_ms/60000) UMOD 65536;
+	elaps_sec = (elaps_time_ms/1000) UMOD 60;
+	elaps_in_sec = (elaps_time_ms/1000) UMOD 65536;
+	remain_time_ms = total_time_ms - elaps_time_ms;
+	remain_min = (remain_time_ms/60000) UMOD 65536;
+	remain_sec = (remain_time_ms/1000) UMOD 60;
+	remain_in_sec = (remain_time_ms/1000) UMOD 65536;
+	time_bar = MULDIV((elaps_min*60+elaps_sec),65535,(total_min*60+total_sec+1));
+	processlogic();
+	}
+
+
+/*******************************************************************************************
+
+udate slider(after entrer,menu,up,down,slider_in):		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION update_slider()
+
+	{
+
+INTEGER	curr_index_int,curr_ind_up_lim_int,curr_ind_low_lim_int,divisor;
+
+	curr_index_int = (curr_index) UMOD 65536;
+	curr_ind_up_lim_int = (curr_ind_up_lim) UMOD 65536;
+	curr_ind_low_lim_int = (curr_ind_low_lim) UMOD 65536;
+	divisor = (curr_ind_up_lim - curr_ind_low_lim) UMOD 65536;
+	if (!divisor) divisor = 1;
+	if (menu_state = menu_state_music)
+		{
+		switch (curr_category)
+			{
+			case(cat_main):
+			slider_fb = 65535 - (muldiv(curr_index_int,65535,divisor));
+			case(cat_song):
+			slider_fb = 65535 - (muldiv(curr_index_int,65535,divisor));
+			case(cat_podcast):
+			slider_fb = 65535 - (muldiv(curr_index_int,65535,divisor));
+			case(cat_audiobook):
+			slider_fb = 65535 - (muldiv(curr_index_int,65535,divisor));
+			case(cat_playlist):
+			slider_fb = 65535 - (muldiv(curr_index_int-1,65535,divisor));
+			default:
+			slider_fb = 65535 - (muldiv(curr_index_int+1,65535,divisor));
+			}
+		};
+	if (menu_state = menu_state_video)
+		{
+		if ((genre_index=1)&&(curr_category=cat_artist))
+			{
+			slider_fb = 65535 - (muldiv(curr_index_int+1,65535,divisor));
+			}
+		else slider_fb = 65535 - (muldiv(curr_index_int,65535,divisor));
+		};
+	processlogic();
+	}
+
+
+/*******************************************************************************************
+
+send update player data (playing song album, title, artist):		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION update_player_data ()
+
+	{
+	INTEGER gpsd_index_b1,gpsd_index_b2,gpsd_index_b3,
+			gpsd_index_b4,gpsd_check_sum;
+
+	STRING 			gpsd_get_pl_song_data$[12];
+
+	gpsd_index_b4 = ((pl_song_index-1) / 65536) / 256;
+	gpsd_index_b3 = ((pl_song_index-1) / 65536) UMOD 256;
+	gpsd_index_b2 = ((pl_song_index-1) UMOD 65536) / 256;
+	gpsd_index_b1 = ((pl_song_index-1) UMOD 65536) UMOD 256;
+	gpsd_check_sum = 256 - ((0xBD+0x07+0x1C+gpsd_index_b4+gpsd_index_b3+gpsd_index_b2
+					+gpsd_index_b1) UMOD 256);
+	gpsd_get_pl_song_data$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x07)+chr(0x38)+chr(0x3C)
+							+chr(0x1C)+chr(gpsd_index_b4)+chr(gpsd_index_b3)
+							+chr(gpsd_index_b2)+chr(gpsd_index_b1)+chr(gpsd_check_sum);
+	out_to_iport$ = gpsd_get_pl_song_data$;								//get title
+	delay(delaytime);
+	gpsd_check_sum = 256 - ((0xBD+0x07+0x1E+gpsd_index_b4+gpsd_index_b3+gpsd_index_b2
+					+gpsd_index_b1) UMOD 256);
+	gpsd_get_pl_song_data$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x07)+chr(0x38)+chr(0x3C)
+							+chr(0x1E)+chr(gpsd_index_b4)+chr(gpsd_index_b3)
+							+chr(gpsd_index_b2)+chr(gpsd_index_b1)+chr(gpsd_check_sum);
+	out_to_iport$ = gpsd_get_pl_song_data$;								//get artist
+	delay(delaytime);
+	gpsd_check_sum = 256 - ((0xBD+0x07+0x18+gpsd_index_b4+gpsd_index_b3+gpsd_index_b2
+					+gpsd_index_b1) UMOD 256);
+	gpsd_get_pl_song_data$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x07)+chr(0x38)+chr(0x3C)
+							+chr(0x18)+chr(gpsd_index_b4)+chr(gpsd_index_b3)
+							+chr(gpsd_index_b2)+chr(gpsd_index_b1)+chr(gpsd_check_sum);
+	out_to_iport$ = gpsd_get_pl_song_data$;								//get album
+	delay(delaytime);
+	}
+
+
+
+/*******************************************************************************************
+
+activate player:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION activate_player ()
+
+	{
+	call clear_player_display();
+	browse_fb = 0;
+	player_fb = 1;
+	if (!disable_notif) call turn_on_notif();
+	notif_on_flag = 1;
+	update_player_flag = 1;			//get title, artist, album, after updating curr index
+	call send_get_num_pl_song();	//get number of playing songs
+	call send_get_pl_song_index();	//get playing song index-return calls update player data
+	call send_get_play_status();	//update play status, song position & lenght, cancel waits
+	}
+
+
+/*******************************************************************************************
+
+activate player from player wait:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION activate_player_from_wait ()
+
+	{
+	call clear_player_display();
+	browse_fb = 0;
+	player_fb = 1;
+	page_title$ = player_page_title$;
+	if (!disable_notif) call turn_on_notif();
+	notif_on_flag = 1;
+	update_player_flag = 1;			//get title, artist, album, after updating curr index
+	call send_get_num_pl_song();	//get number of playing songs
+	call send_get_pl_song_index();	//get playing song index-return calls update player data
+	call send_get_play_status();	//update play status song position & lenght, cancel waits
+	processlogic();
+	}
+
+
+/*******************************************************************************************
+
+activate browse:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION activate_browse ()
+
+	{
+	player_fb = 0;
+	browse_fb = 1;
+	if (curr_path = path_main)
+		{
+		curr_index = main_index;
+		curr_ind_up_lim = 7;
+		};
+	call turn_off_notif();
+	notif_on_flag = 0;
+	processlogic();
+	}
+
+
+
+
+/*******************************************************************************************
+
+push/release disable notif:		ok
+          
+*******************************************************************************************/
+
+
+push disable_notif
+	{
+	if(notif_on_flag) call turn_off_notif();
+	}
+release disable_notif
+	{
+	if(notif_on_flag) call turn_on_notif();
+	}
+
+/*******************************************************************************************
+
+push menu:		ok
+          
+*******************************************************************************************/
+
+
+push menu
+
+	{
+	if (player_fb = 1)
+		{
+		player_page_title$ = page_title_buf$;
+		call activate_browse();
+		if (play_fb = 1)
+			{
+			wait (1000, player_wait)
+				{
+				call activate_player_from_wait();
+				};
+			}
+		}
+	else
+		{
+		call reset_curr_selection(curr_category);
+		switch(curr_category)
+			{
+			case(cat_playlist):
+				{
+				playlist_index = curr_index;
+				page_title_buf$ = "Music";
+				page_title$ = page_title_buf$;					
+				call display_main_lines();
+				curr_category = cat_main;
+				curr_index = main_index;
+				curr_ind_low_lim = 0;
+				curr_ind_up_lim = 7;
+				}
+			case(cat_artist):
+				{
+				switch(curr_path)
+					{
+					case(path_artist):
+						{
+						artist_index = curr_index;
+						page_title_buf$ = "Music";
+						page_title$ = page_title_buf$;					
+						call display_main_lines();
+						curr_category = cat_main;
+						curr_index = main_index;
+						curr_ind_low_lim = 0;
+						curr_ind_up_lim = 7;
+						}
+					case(path_genre):
+						{
+						if (menu_state=menu_state_music)
+							{
+							artist_index = curr_index;
+							page_title_buf$ = "Genres";
+							page_title$ = page_title_buf$;
+							curr_category = cat_genre;
+							curr_index = genre_index;
+							curr_ind_low_lim = -1;
+							curr_ind_up_lim = num_of_genres;
+							call update_curr_ind_disp();
+							if((curr_index + 1) < num_of_lines)
+								{
+								call send_retr_recs (curr_index_disp);
+								}
+							else
+								{
+								call send_retr_recs (curr_index_disp -1);
+								};
+							};
+						if (menu_state=menu_state_video)
+							{
+							call reset_db_selection_hierarchy();
+							artist_index = curr_index;
+							page_title_buf$ = "Videos";
+							page_title$ = page_title_buf$;
+							curr_category = cat_genre;
+							curr_index = genre_index;
+							curr_ind_low_lim = 0;
+							curr_ind_up_lim = num_of_genres;
+							call update_curr_ind_disp();
+							call send_retr_recs (curr_index_disp);
+							};
+						}
+	                }
+				}
+			case(cat_album):
+				{
+				switch(curr_path)
+					{
+					case(path_artist):
+						{
+						album_index = curr_index;
+						page_title_buf$ = "Artists";
+						page_title$ = page_title_buf$;
+						curr_category = cat_artist;
+						curr_index = artist_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_artists;
+						call update_curr_ind_disp();
+						if((curr_index + 1) < num_of_lines)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+					case(path_album):
+						{
+						album_index = curr_index;
+						page_title_buf$ = "Music";
+						page_title$ = page_title_buf$;
+						call display_main_lines();
+						curr_category = cat_main;
+						curr_index = main_index;
+						curr_ind_low_lim = 0;
+						curr_ind_up_lim = 7;
+						}
+					case(path_genre):
+						{
+						if (menu_state=menu_state_music)
+							{
+							album_index = curr_index;
+							page_title_buf$ = title_genre$;
+							page_title$ = page_title_buf$;
+							curr_category = cat_artist;
+							curr_index = artist_index;
+							curr_ind_low_lim = -1;
+							curr_ind_up_lim = num_of_artists;
+							call update_curr_ind_disp();
+							if((curr_index + 1) < num_of_lines)
+								{
+								call send_retr_recs (curr_index_disp);
+								}
+							else
+								{
+								call send_retr_recs (curr_index_disp -1);
+								};
+							};
+						if (menu_state=menu_state_video)
+							{
+							if(num_of_artists=0)
+								{
+								call reset_db_selection_hierarchy();
+								page_title_buf$ = "Videos";
+								page_title$ = page_title_buf$;
+								curr_category = cat_genre;
+								curr_index = genre_index;
+								curr_ind_low_lim = 0;
+								curr_ind_up_lim = num_of_genres;
+								call update_curr_ind_disp();
+								call send_retr_recs (curr_index_disp);
+								};
+							if(num_of_artists>0)
+								{
+								album_index = curr_index;
+								page_title_buf$ = title_genre$;
+								page_title$ = page_title_buf$;
+								curr_category = cat_artist;
+								curr_index = artist_index;
+								curr_ind_low_lim = 0;
+								curr_ind_up_lim = num_of_artists;
+								call update_curr_ind_disp();
+								call send_retr_recs (curr_index_disp);
+								};
+							};
+						}
+					case(path_composer):
+						{
+						album_index = curr_index;
+						page_title_buf$ = "Composers";
+						page_title$ = page_title_buf$;
+						curr_category = cat_composer;
+						curr_index = composer_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_composers;
+						call update_curr_ind_disp();
+						if((curr_index + 1) < num_of_lines)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+	                }
+				}
+			case(cat_song):
+				{
+				switch(curr_path)
+					{
+					case(path_playlist):
+						{
+						song_index = curr_index;
+						page_title_buf$ = "Playlists";
+						page_title$ = page_title_buf$;
+						curr_category = cat_playlist;
+						curr_index = playlist_index;
+						curr_ind_low_lim = 1;
+						curr_ind_up_lim = num_of_playlists;
+						if((curr_index + 1) < num_of_lines) curr_index_disp = 0;
+						else call update_curr_ind_disp();
+						call send_retr_recs (curr_index_disp + 1);
+						}
+					case(path_artist):
+						{
+						song_index = curr_index;
+						page_title_buf$ = title_artist$;
+						page_title$ = page_title_buf$;
+						curr_category = cat_album;
+						curr_index = album_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_albums;
+						call update_curr_ind_disp();
+						if((curr_index + 1) < num_of_lines)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+					case(path_album):
+						{
+						song_index = curr_index;
+						page_title_buf$ = "Albums";
+						page_title$ = page_title_buf$;
+						curr_category = cat_album;
+						curr_index = album_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_albums;
+						call update_curr_ind_disp();
+						if((curr_index + 1) < num_of_lines)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+					case(path_song):
+						{
+						song_index = curr_index;
+						page_title_buf$ = "Music";
+						page_title$ = page_title_buf$;
+						call display_main_lines();
+						curr_category = cat_main;
+						curr_index = main_index;
+						curr_ind_low_lim = 0;
+						curr_ind_up_lim = 7;
+						}
+					case(path_podcast):
+						{
+						song_index = curr_index;
+						page_title_buf$ = "Podcasts";
+						page_title$ = page_title_buf$;
+						curr_category = cat_podcast;
+						curr_index = podcast_index;
+						curr_ind_low_lim = 0;
+						curr_ind_up_lim = num_of_podcasts;
+						call update_curr_ind_disp();
+						call send_retr_recs (curr_index_disp);
+						}
+					case(path_genre):
+						{
+						if (menu_state=menu_state_music)
+							{
+							song_index = curr_index;
+							page_title_buf$ = title_artist$;
+							page_title$ = page_title_buf$;
+							curr_category = cat_album;
+							curr_index = album_index;
+							curr_ind_low_lim = -1;
+							curr_ind_up_lim = num_of_albums;
+							call update_curr_ind_disp();
+							if((curr_index + 1) < num_of_lines)
+								{
+								call send_retr_recs (curr_index_disp);
+								}
+							else
+								{
+								call send_retr_recs (curr_index_disp -1);
+								};
+							}
+						if (menu_state=menu_state_video)
+							{
+							song_index = curr_index;
+/*							call reset_db_selection_hierarchy();   //added*/
+							if (num_of_albums > 0)
+								{
+								page_title_buf$ = title_artist$;
+								page_title$ = page_title_buf$;
+								curr_category = cat_album;
+								curr_index = album_index;
+								if(genre_index=1) curr_ind_low_lim = -1;
+								else curr_ind_low_lim = 0;
+								curr_ind_up_lim = num_of_albums;
+								call update_curr_ind_disp();
+								call send_retr_recs (curr_index_disp);
+								};
+							if(num_of_albums = 0)
+								{
+								if(num_of_artists > 0)
+									{
+									page_title_buf$ = title_genre$;
+									page_title$ = page_title_buf$;
+									curr_category = cat_artist;
+									curr_index = artist_index;
+									if (genre_index=1) curr_ind_low_lim = -1;
+									if (genre_index<>1) curr_ind_low_lim = 0;
+									curr_ind_up_lim = num_of_artists;
+									call update_curr_ind_disp();
+									if(((curr_index + 1) >= num_of_lines)&&(genre_index=1))
+/*
+Direction of the condition is oposite, as  the music video (genre_index=1), are only one artist category
+with "All"
+*/
+										{
+										call send_retr_recs (curr_index_disp - 1);
+										}
+									else
+										{
+										call send_retr_recs (curr_index_disp);
+										};
+/*									delay(delaytime);*/
+									call reset_db_selection_hierarchy();
+									};
+								if(num_of_artists = 0)
+									{
+									call reset_db_selection_hierarchy();
+									page_title_buf$ = "Videos";
+									page_title$ = page_title_buf$;
+									curr_category = cat_genre;
+									curr_index = genre_index;
+									curr_ind_low_lim = 0;
+									curr_ind_up_lim = num_of_genres;
+									call update_curr_ind_disp();
+									call send_retr_recs (curr_index_disp);
+									};
+								}
+							};
+						}
+				case(path_composer):
+						{
+						song_index = curr_index;
+						page_title_buf$ = title_composer$;
+						page_title$ = page_title_buf$;
+						curr_category = cat_album;
+						curr_index = album_index;
+						curr_ind_low_lim = -1;
+						curr_ind_up_lim = num_of_albums;
+						call update_curr_ind_disp();
+						if((curr_index + 1) < num_of_lines)
+							{
+							call send_retr_recs (curr_index_disp);
+							}
+						else
+							{
+							call send_retr_recs (curr_index_disp -1);
+							};
+						}
+	                }
+				}
+			case(cat_podcast):
+				{
+				podcast_index = curr_index;
+				page_title_buf$ = "Music";
+				page_title$ = page_title_buf$;
+				call display_main_lines();
+				curr_category = cat_main;
+				curr_index = main_index;
+				curr_ind_low_lim = 0;
+				curr_ind_up_lim = 7;
+				}
+			case(cat_genre):
+				{
+				if (menu_state = menu_state_music)
+					{
+					genre_index = curr_index;
+					page_title_buf$ = "Music";
+					page_title$ = page_title_buf$;
+					call display_main_lines();				
+					curr_category = cat_main;
+					curr_index = main_index;
+					curr_ind_low_lim = 0;
+					curr_ind_up_lim = 7;
+					}
+				}
+			case(cat_composer):
+				{
+				composer_index = curr_index;
+				page_title_buf$ = "Music";
+				page_title$ = page_title_buf$;
+				call display_main_lines();
+				curr_category = cat_main;
+				curr_index = main_index;
+				curr_ind_low_lim = 0;
+				curr_ind_up_lim = 7;
+				}
+			case(cat_audiobook):
+				{
+				audiobook_index = curr_index;
+				page_title_buf$ = "Music";
+				page_title$ = page_title_buf$;
+				call display_main_lines();
+				curr_category = cat_main;
+				curr_index = main_index;
+				curr_ind_low_lim = 0;
+				curr_ind_up_lim = 7;
+				}
+			}
+		}
+	if (play_fb = 1)
+		{
+		retimewait (1000, player_wait);
+		};
+	call update_slider();
+	call update_dis_ind_rec();
+	index_change_flag = 0;
+	processlogic();
+	}
+
+
+/*******************************************************************************************
+
+push enter:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION enter_pressed ()
+
+	{	
+	if (play_fb = 1)
+		{
+		retimewait (1000, player_wait);
+		};
+	switch(curr_category)
+		{
+		case(cat_main):
+			{
+			switch(main_index)
+				{
+				case(0):							//playlists
+					{
+					curr_path = path_playlist;
+					page_title_buf$ = "Playlists";
+					page_title$ = page_title_buf$;
+					curr_category = cat_playlist;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						podcast_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						audiobook_index = 0;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};						
+					curr_ind_low_lim = 1;
+					curr_index = playlist_index;
+					retr_flag = 3;					//ret num cat rec will send retr(ind dis+1)
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider*
+					}
+				case(1):							//artists
+					{
+					curr_path = path_artist;
+					page_title_buf$ = "Artists";
+					page_title$ = page_title_buf$;
+					curr_category = cat_artist;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						podcast_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						audiobook_index = 0;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = -1;
+					curr_index = artist_index;					
+					if((curr_index + 1) < num_of_lines)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+					}
+				case(2):							//albums
+					{
+					curr_path = path_album;
+					page_title_buf$ = "Albums";
+					page_title$ = page_title_buf$;
+					curr_category = cat_album;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						podcast_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						audiobook_index = 0;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = -1;
+					curr_index = album_index;
+					if((curr_index + 1) < num_of_lines)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+					}
+				case(3):							//songs
+					{
+					curr_path = path_song;
+					page_title_buf$ = "Songs";
+					page_title$ = page_title_buf$;
+					curr_category = cat_song;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						podcast_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						audiobook_index = 0;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = 0;
+					curr_index = song_index;
+					retr_flag = 2;					//ret num cat rec will send retr(ind dis)
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+					}
+				case(4):							//podcasts
+					{
+					curr_path = path_podcast;
+					page_title_buf$ = "Podcasts";
+					page_title$ = page_title_buf$;
+					curr_category = cat_podcast;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						podcast_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						audiobook_index = 0;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = 0;
+					curr_index = podcast_index;
+					retr_flag = 2;					//ret num cat rec will send retr(ind dis)
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+					}
+				case(5):							//genres
+					{
+					curr_path = path_genre;
+					page_title_buf$ = "Genres";
+					page_title$ = page_title_buf$;
+					curr_category = cat_genre;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						podcast_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						audiobook_index = 0;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = -1;
+					curr_index = genre_index;
+					if((curr_index + 1) < num_of_lines)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+					}
+				case(6):							//composers
+					{
+					curr_path = path_composer;
+					page_title_buf$ = "Composers";
+					page_title$ = page_title_buf$;
+					curr_category = cat_composer;;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						podcast_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						audiobook_index = 0;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = -1;
+					curr_index = composer_index;
+					if((curr_index + 1) < num_of_lines)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+					}
+				case(7):							//audiobooks
+					{
+					curr_path = path_audiobook;
+					page_title_buf$ = "Audiobooks";
+					page_title$ = page_title_buf$;
+					curr_category = cat_audiobook;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						playlist_index = 1;
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						podcast_index = 0;
+						genre_index = -1;
+						composer_index = -1;
+						audiobook_index = 0;
+						index_change_flag = 0;
+						call reset_db_selection();
+						};
+					curr_ind_low_lim = 0;
+					curr_index = audiobook_index;
+					retr_flag = 2;					//ret num cat rec will send retr(ind dis)
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+					}
+				};
+			}
+		case(cat_playlist):
+			{
+			call page_title_from_line$();			//gives page_title + title_***
+			call send_sel_db_rec();
+			curr_category = cat_song;
+			if ((prev_curr_index <> curr_index)&&(index_change_flag))
+				{
+				song_index = 0;
+				index_change_flag = 0;
+				};
+			curr_index = song_index;
+			curr_ind_low_lim = 0;
+			retr_flag = 2;					//ret num cat rec will send retr(ind dis)
+			call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+			}
+		case(cat_artist):
+			{
+			switch (menu_state)
+				{
+				case (menu_state_music):
+					{
+					call page_title_from_line$();
+					call send_sel_db_rec();
+					curr_category = cat_album;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						album_index = -1;
+						song_index = 0;
+						index_change_flag = 0;
+						};
+					curr_index = album_index;
+					curr_ind_low_lim = -1;
+					if((curr_index + 1) < num_of_lines)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+					}
+
+
+
+				case (menu_state_video):
+					{
+					call page_title_from_line$();
+					curr_category = cat_genre;		//send select genre #1
+					artist_index = curr_index;
+					curr_index = genre_index;
+					call send_sel_db_rec();
+					curr_category = cat_artist;
+					curr_index = artist_index;
+
+
+/*work around for iPod bug: to get correct list of the song after the artist,
+when on music videos, album #0 must be selected before select artist is sent,
+in addition, when going up from songs to artists, select genre #1, and get num of artist
+have to be send, before going back to the songs*/
+
+					if(genre_index = 1)
+						{
+						call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+						curr_category = cat_album;		//send select album #0
+						artist_index = curr_index;
+						curr_index = album_index;
+						call send_sel_db_rec();
+						curr_category = cat_artist;
+						curr_index = artist_index;
+						}
+
+/*work around for iPod bug: to get correct song list when on tv shows or video podcasts,
+select genre (2 or 3) must be send before select artist is nent*/
+
+					call send_sel_db_rec();
+					curr_category = cat_album;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						album_index = 0;
+						song_index = 0;
+						index_change_flag = 0;
+						};
+					curr_index = album_index;
+					curr_ind_low_lim = 0;
+					retr_flag = 4;					//ret num cat rec will send retr(ind dis-1)
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+/*
+return number of cat records (0x3C,0x25), will trigger enter for skip, if record num = 1 (no records), and that way 
+will send select record 0, for skipped, lower level (albums, or artists and albums).
+*/
+					}
+				}
+			}
+
+		case(cat_album):
+			{
+			call page_title_from_line$();
+			call send_sel_db_rec();
+			curr_category = cat_song;
+			if ((prev_curr_index <> curr_index)&&(index_change_flag))
+				{
+				song_index = 0;
+				index_change_flag = 0;
+				};
+			curr_index = song_index;
+			curr_ind_low_lim = 0;
+			retr_flag = 2;					//ret num cat rec will send retr(ind dis)
+			call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+			}
+		case(cat_song):
+			{
+			if (num_of_songs + 1 > 0)
+				{
+				if (shuffle_off_fb) pl_song_index = (curr_index + 1) UMOD 65536;
+				cancelwait (player_wait);
+				call send_play_cur_sel();
+				delay(delaytime);
+				call activate_player();		//returns:#ofsongs,song#,playerdata,playstatus
+				};
+			}
+		case(cat_podcast):
+			{
+			if (num_of_podcasts + 1 > 0)
+				{
+				call page_title_from_line$();
+				call send_sel_db_rec();
+				curr_category = cat_song;
+				if ((prev_curr_index <> curr_index)&&(index_change_flag))
+					{
+					song_index = 0;
+					index_change_flag = 0;
+					};
+				curr_index = song_index;
+				curr_ind_low_lim = 0;
+				retr_flag = 2;					//ret num cat rec will send retr(ind dis)
+				call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+				}
+			}
+		case(cat_genre):
+			{
+			switch (menu_state)
+				{
+				case(menu_state_music):
+					{
+					call page_title_from_line$();
+					call send_sel_db_rec();
+					curr_category = cat_artist;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						artist_index = -1;
+						album_index = -1;
+						song_index = 0;
+						index_change_flag = 0;
+						};
+					curr_index = artist_index;
+					curr_ind_low_lim = -1;
+					if((curr_index + 1) < num_of_lines)
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+					}
+				case(menu_state_video):
+					{
+					call page_title_from_line$();
+					call send_sel_db_rec();
+					curr_category = cat_artist;
+					album_index = 0;
+					song_index = 0;
+					if ((prev_curr_index <> curr_index)&&(index_change_flag))
+						{
+						if(genre_index=1) artist_index = -1;
+						else artist_index = 0;
+						index_change_flag = 0;
+						};
+					curr_index = artist_index;
+					if(genre_index=1) curr_ind_low_lim = -1;
+					else curr_ind_low_lim = 0;
+					if((genre_index = 1)&&((curr_index + 1) < num_of_lines))
+						{
+						retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+						}
+					else
+						{
+						retr_flag = 4;				//ret num cat rec will send retr(ind dis-1)
+						};
+					call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+/*
+return number of cat records (0x3C,0x25), will trigger enter for skip, if record num = 1 (no records), and that way 
+will send select record 0, for skipped level (albums, or artists and albums).
+*/
+					}
+				}
+			}
+		case(cat_composer):
+			{
+			call page_title_from_line$();
+			call send_sel_db_rec();
+			curr_category = cat_album;
+			if ((prev_curr_index <> curr_index)&&(index_change_flag))
+				{
+				album_index = -1;
+				song_index = 0;
+				index_change_flag = 0;
+				};
+			curr_index = album_index;
+			curr_ind_low_lim = -1;
+			if((curr_index + 1) < num_of_lines)
+				{
+				retr_flag = 2;				//ret num cat rec will send retr(ind dis)
+				}
+			else
+				{
+				retr_flag = 1;				//ret num cat rec will send retr(ind dis-1)
+				};
+			call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+			}
+		case(cat_audiobook):
+			{
+			if (num_of_audiobooks + 1 > 0)
+				{
+				call page_title_from_line$();
+/*
+				page_title_buf$ = "Now Playing";
+				page_title$ = page_title_buf$;
+*/
+				call send_sel_db_rec();
+				delay(delaytime);
+				pl_song_index = (curr_index + 1) UMOD 65536;
+				call activate_player();		//returns:#ofsongs,song#,playerdata,playstatus
+				};
+			}
+		};
+	call update_slider();
+	dis_send_retr_rec_flag = 1;
+	call update_dis_ind_rec();
+	prev_curr_index = curr_index;
+	processlogic();
+	}
+
+
+/*******************************************************************************************
+
+push enter for skip:		ok
+          
+*******************************************************************************************/
+
+
+FUNCTION enter_pressed_for_skip ()
+
+	{
+	switch (curr_category)
+		{
+		case(cat_artist):
+			{
+/*			call send_sel_db_rec();	*/
+			curr_category = cat_album;
+			curr_index = album_index;
+			curr_ind_low_lim = 0;
+			retr_flag = 4;					//ret num cat rec will send retr(ind dis-1)
+			call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+			}
+		case(cat_album):
+			{
+/*			call send_sel_db_rec();	*/
+			curr_category = cat_song;
+			curr_index = song_index;
+			curr_ind_low_lim = 0;
+			retr_flag = 4;					//ret num cat rec will send retr(ind dis)
+			call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+			}
+		};
+	prev_curr_index = curr_index;
+	}
+
+
+
+push enter
+
+	{
+	call enter_pressed ();
+	}
+
+
+/*******************************************************************************************
+
+line1 to line32 presses:			ok
+          
+*******************************************************************************************/
+
+push line1_press
+	{
+	if((!index_change_flag)&&(curr_index<>disp_index))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	curr_index = (curr_index - disp_index);
+	switch (curr_category)
+		{
+		case(cat_main) : main_index = curr_index;
+		case(cat_playlist) : playlist_index = curr_index;
+		case(cat_artist) : artist_index = curr_index;
+		case(cat_album) : album_index = curr_index;
+		case(cat_genre) : genre_index = curr_index;
+		case(cat_podcast) : podcast_index = curr_index;
+		case(cat_song) : song_index = curr_index;
+		case(cat_composer) : composer_index = curr_index;
+		case(cat_audiobook) : audiobook_index = curr_index;
+		};
+	disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+	call enter_pressed ();
+	}
+
+push line2_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+1)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 1) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 1);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line3_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+2)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 2) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 2);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line4_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+3)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 3) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 3);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line5_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+4)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 4) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 4);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line6_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+5)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 5) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 5);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;
+			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line7_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+6)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 6) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 6);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line8_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+7)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 7) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 7);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line9_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+8)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 8) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 8);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line10_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+9)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 9) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 9);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line11_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+10)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 10) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 10);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line12_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+11)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 11) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 11);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line13_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+12)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 12) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 12);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line14_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+13)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 13) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 13);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line15_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+14)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 14) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 14);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line16_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+15)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 15) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 15);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line17_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+16)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 16) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 16);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line18_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+17)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 17) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 17);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line19_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+18)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 18) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 18);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line20_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+19)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 19) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 19);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line21_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+20)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 20) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 20);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line22_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+21)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 21) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 21);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line23_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+22)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 22) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 22);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line24_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+23)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 23) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 23);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line25_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+24)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 24) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 24);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line26_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+25)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 25) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 25);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line27_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+26)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 26) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 26);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line28_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+27)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 27) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 27);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line29_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+28)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 28) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 28);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line30_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+29)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 29) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 29);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line31_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+30)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 30) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 30);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+push line32_press
+	{
+	if((!index_change_flag)&&(curr_index<>(disp_index+31)))
+		{
+		prev_curr_index = curr_index;
+		index_change_flag = 1;
+		};
+	if ((curr_index - disp_index + 31) <= curr_ind_up_lim)
+		{
+		curr_index = (curr_index - disp_index + 31);
+		switch (curr_category)
+			{
+			case(cat_main) : main_index = curr_index;
+			case(cat_playlist) : playlist_index = curr_index;
+			case(cat_artist) : artist_index = curr_index;
+			case(cat_album) : album_index = curr_index;
+			case(cat_genre) : genre_index = curr_index;
+			case(cat_podcast) : podcast_index = curr_index;
+			case(cat_song) : song_index = curr_index;
+			case(cat_composer) : composer_index = curr_index;
+			case(cat_audiobook) : audiobook_index = curr_index;			};
+		disp_index = (curr_index - curr_ind_low_lim) UMOD num_of_lines;
+		call enter_pressed ();
+		}
+	}
+
+
+
+
+/*******************************************************************************************
+
+transport commands:			ok
+          
+*******************************************************************************************/
+
+
+
+push play_pause
+	{
+	switch (play_fb)
+		{
+		case(0):
+			{
+			if(curr_category = 0)
+				{
+				call send_transport (0x01);		//send toggle play/pause
+				call send_get_play_status();	//updates song position & lenght, cancel waits
+				wait (1000, player_wait_main)
+					{
+					call activate_player_from_wait();
+					};
+				}
+			else
+				{
+				if(player_fb = 1)
+					{
+					call send_transport (0x01);		//send toggle play/pause
+					call send_get_play_status();	//updates song position & lenght, cancel waits
+					}
+				else
+					{
+					if(stop_fb)
+						{
+						cancelwait (player_wait);
+						cancelwait (player_wait_main);
+						call send_sel_db_rec();
+						call send_play_cur_sel();
+						call send_get_play_status();	//updates song position & lenght, cancel waits
+						pl_song_index = (curr_index + 1) UMOD 65536;
+						call activate_player();		//returns:#ofsongs,song#,playerdata,playstatus
+						};
+					if(pause_fb)
+						{
+						call send_transport (0x01);		//send toggle play/pause
+						call send_get_play_status();	//updates song position & lenght, cancel waits
+						};
+					}
+				}
+			}
+		case(1):
+			{
+			cancelwait (player_wait);
+			cancelwait (player_wait_main);
+			call send_transport (0x01);			//send toggle play/pause
+			call send_get_play_status();		//updates song position & lenght, cancel waits
+			}
+		}
+	}
+
+push play
+	{
+	cancelwait (player_wait);
+	cancelwait (player_wait_main);
+	if(stop_fb = 1)
+		{
+		call send_play_cur_sel();
+		pl_song_index = (curr_index + 1) UMOD 65536;
+		call activate_player();		//returns:#ofsongs,song#,playerdata,playstatus
+		};
+	if(pause_fb = 1)
+		{
+		call send_transport (0x01);					//send toggle play/pause
+		call activate_player();		//returns:#ofsongs,song#,playerdata,playstatus
+		};
+	}
+
+push play_curr_sel
+	{
+	if(curr_category=cat_song) call send_play_cur_sel();
+	if(curr_category<>cat_song)
+		{
+		call send_sel_db_rec();
+		call send_play_cur_sel();
+		};
+	}
+
+FUNCTION pause_pressed ()
+	{
+	if(play_fb = 1)
+		{
+		call send_transport (0x01);
+		call send_get_play_status();		//updates song position & lenght, cancel waits
+		cancelwait (player_wait);
+		cancelwait (player_wait_main);
+		};
+	}
+
+push pause
+	{
+	call pause_pressed();
+	}
+
+push stop
+	{
+	call send_transport (0x02);
+	cancelwait (player_wait);
+	cancelwait (player_wait_main);
+	call send_get_play_status();			//updates song position & lenght, cancel waits
+	}
+
+push next_track
+	{
+	wait (100, next_wait)
+		{
+		if(next_track)
+			{
+			call send_transport (0x05);		//ffwd on
+			ffwd_from_next_flag = 1;
+			}
+		}
+	}
+release next_track
+	{
+	if(ffwd_from_next_flag)
+		{
+		call send_transport (0x07);			//ffwd off
+		ffwd_from_next_flag = 0;
+		}
+	else
+		{
+		call send_transport (0x03);			//next track
+		cancelwait(next_wait);
+		}
+	}
+
+push prev_track
+	{
+	wait (100, prev_wait)
+		{
+		if(prev_track)
+			{
+			call send_transport (0x06);		//rew on
+			rew_from_prev_flag = 1;
+			}
+		}
+	}
+release prev_track
+	{
+	if(rew_from_prev_flag)
+		{
+		call send_transport (0x07);			//rew off
+		rew_from_prev_flag = 0;
+		}
+	else
+		{
+		call send_transport (0x04);			//prev track
+		cancelwait(prev_wait);
+		}
+	}
+
+push ffwd
+	{
+	ffwd_fb = 1;
+	call send_transport (0x05);
+	}
+
+push rew
+	{
+	rew_fb = 1;
+	call send_transport (0x06);
+	}
+
+release ffwd
+	{
+	ffwd_fb = 0;
+	call send_transport (0x07);
+	}
+
+release rew
+	{
+	rew_fb = 0;
+	call send_transport (0x07);
+	}
+
+
+
+/*******************************************************************************************
+
+ipod docked:		ok
+          
+*******************************************************************************************/
+                                            
+Function ipod_docked()
+
+	{
+
+	page_title$ = "Music";
+	call display_main_lines();
+	data_in$ = "";
+	char_1 = 0;
+	char_2 = 0;
+	char_3 = 0;
+	packet_lenght = 10;
+	main_index = 0;
+	playlist_index = 1;
+	artist_index = -1;
+	album_index = -1;
+	song_index = 0;
+	genre_index = -1;
+	composer_index = -1;
+	disp_index = 0;
+	curr_category = 0;
+	curr_index = 0;
+	curr_ind_low_lim = 0;
+	curr_ind_up_lim = 7;
+	stop_fb = 1;
+	browse_fb = 1;
+	player_fb = 0;
+	out_line1_fb = 1;													//update disp fb
+	out_line2_fb = 0;
+	out_line3_fb = 0;
+	out_line4_fb = 0;
+	out_line5_fb = 0;
+	out_line6_fb = 0;
+	out_line7_fb = 0;
+	out_line8_fb = 0;
+	out_line9_fb = 0;
+	slider_fb = 65535;
+	total_sec = 1;
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x28)
+					+chr(0x18);					//get ipod name
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x10)
+					+chr(0x30);					//get shuffle
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x13)
+					+chr(0x2D);					//get repeat
+	delay(delaytime);
+	out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x38)+chr(0x3C)+chr(0x20)
+					+chr(0x20);					//get play status
+	delay(delaytime);
+	ipod_is_in = 1;
+	ipod_is_out = 0;
+	call reset_db_selection();
+	if (play_on_dock)
+		{
+		cancelwait (player_wait);
+		cancelwait (player_wait_main);
+		call send_transport (0x01);				//play/pause 
+		call activate_player();		//returns:#ofsongs,song#,playerdata,playstatus
+		}
+	processlogic();
+	}
+
+
+
+/*******************************************************************************************
+
+player status change functions:		
+          
+*******************************************************************************************/
+
+Function player_stopped()
+	{
+	play_fb = 0;
+	pause_fb = 0;
+	stop_fb = 1;
+	ffwd_fb = 0;
+	rew_fb = 0;
+	cancelwait (player_wait);
+	cancelwait (player_wait_main);
+	call activate_browse();
+	if (menu_state = menu_state_music)
+		{
+		page_title$ = "Music";
+		call display_main_lines();
+		curr_category = cat_main;
+		curr_index = main_index;
+		curr_ind_low_lim = 0;
+		curr_ind_up_lim = 7;
+		call update_curr_ind_disp();
+		call update_slider();
+		call update_dis_ind_rec();
+		};
+	if (menu_state = menu_state_video)
+		{
+		call reset_db_selection_hierarchy();
+		page_title$ = "Videos";
+		call display_main_lines();
+		curr_category = cat_genre;
+		curr_index = genre_index;
+		curr_ind_low_lim = 0;
+		curr_ind_up_lim = num_of_genres;
+		call update_curr_ind_disp();
+		call update_slider();
+		call update_dis_ind_rec();
+		};
+	}
+
+
+
+Function player_playing()
+	{
+	play_fb = 1;
+	pause_fb = 0;
+	stop_fb = 0;
+	ffwd_fb = 0;
+	rew_fb = 0;
+	}
+
+
+
+Function player_paused()
+	{
+	play_fb = 0;
+	pause_fb = 1;
+	stop_fb = 0;
+	ffwd_fb = 0;
+	rew_fb = 0;
+	cancelwait (player_wait);
+	cancelwait (player_wait_main);
+	}
+
+
+
+
+/*******************************************************************************************
+
+analize incoming data:		ok
+          
+*******************************************************************************************/
+	INTEGER 		rec_char1,rec_char2,rec_char3,rec_char4,rec_char5,rec_char6,rec_char7,rec_char8,rec_char9,
+					rec_char_next,rec_char_index,index_from_rec_b1,index_from_rec_b2,
+					index_from_rec_b3,index_from_rec_b4,rec_lenght,pl_song_index_b4,
+					pl_song_index_b3,pl_song_index_b2,pl_song_index_b1,num_pl_song_b4,
+					num_pl_song_b3,num_pl_song_b2,num_pl_song_b1,player_status,
+					player_state_code,num_cat_rec,num_cat_rec_b1,num_cat_rec_b2,num_cat_rec_b3,
+					num_cat_rec_b4,repeat_code,shuffle_code,ack_char,
+
+					next_char_0,next_char_1,next_char_2,next_char_3,new_char_0,new_char_1,
+					new_char_2,
+
+					string_began_flag;
+
+	LONG_INTEGER	index_from_rec;
+
+	STRING 			data_to_process$[255],temp_line_out$[255],temp_firmware_ver$[20],
+					data_to_process_temp$[255];
+
+
+
+/*******************************************************************************************
+
+analize parced command:          
+
+*******************************************************************************************/
+
+
+FUNCTION analize_in_data (STRING data_to_process$)
+		{
+		rec_char1 = getc(data_to_process$);
+		rec_char2 = getc(data_to_process$);
+		rec_char3 = getc(data_to_process$);						// skip packet lenght high byte
+		rec_char4 = getc(data_to_process$);
+		rec_char5 = getc(data_to_process$);						// skip packet command type byte
+		rec_char6 = getc(data_to_process$);
+		rec_char7 = getc(data_to_process$);
+		rec_lenght = rec_char4;
+		if((rec_char1 = 42) && (rec_char2 = 77) && (rec_char6 = 0))	//0x2A,0x4D,0x00
+			{
+			rec_char8 = getc(data_to_process$);
+			rec_char9 = getc(data_to_process$);
+			if(rec_char7 = 0x06 && rec_char8 = 0x00) 			//iPod is not present
+				{
+				ipod_is_in = 0;
+				ipod_is_out = 1;
+				player_fb = 0;
+				browse_fb = 0;
+				};
+			if(rec_char7 = 0x06 && rec_char8 = 0x01) 			//iPod is present 
+				{
+				if(ipod_is_in = 0)
+					{
+					call ipod_docked();
+					};
+				ipod_is_in = 1;
+				ipod_is_out = 0;
+				};
+			if(rec_char7 = 0x00)								//retrieve firmware version 
+				{
+				temp_firmware_ver$ = chr(rec_char8) + chr(rec_char9);			//clear string
+				rec_char_index = 9;
+				while ((rec_char_index < (rec_lenght + 3))&&(rec_char_index <= char_in_rec))
+					{
+					rec_char_next = getc(data_to_process$);
+					rec_char_index = rec_char_index + 1;
+					temp_firmware_ver$ = temp_firmware_ver$ + chr(rec_char_next);
+					};
+				firmware_ver$ = temp_firmware_ver$;
+				if(ipod_is_in = 0)
+					{
+					call ipod_docked();
+					};
+				ipod_is_in = 1;
+				ipod_is_out = 0;
+				};
+			};
+		if ((rec_char1 = 42) && (rec_char2 = 73) && (rec_char5 = 56))	//0x2A,0x49,command type = 0x38(two way)
+			{
+			switch (rec_char7)
+				{
+				case (0x27):										// returned cat db record
+					{
+					index_from_rec_b4 = getc(data_to_process$);
+					index_from_rec_b3 = getc(data_to_process$);
+					index_from_rec_b2 = getc(data_to_process$);
+					index_from_rec_b1 = getc(data_to_process$);
+					index_from_rec = (256 * index_from_rec_b4 + index_from_rec_b3)*65536
+									+256 * index_from_rec_b2 + index_from_rec_b1;//prepare index of the rec to compare
+					temp_line_out$ = "";							//clear temp string
+					rec_char_index = 11;
+					while ((rec_char_index < (rec_lenght + 3))&&(rec_char_index <= char_in_rec))
+						{
+						rec_char_next = getc(data_to_process$);
+
+/*****************************************************************************
+translate from UTF* start -only for 2-series processor
+*****************************************************************************/
+
+	if (rec_char_next < 128)		//ASCII char
+		{
+		rec_char_index = rec_char_index + 1;
+		temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+		}
+	else							//2-bytes UTF8 char
+		{
+		if((rec_char_next >= 128)&&(rec_char_next < 224))
+			{
+			next_char_0 = rec_char_next;
+			next_char_1 = getc(data_to_process$);
+			rec_char_index = rec_char_index + 2;
+			new_char_0 = (next_char_0 & 28) >> 2;
+			new_char_1 = (next_char_0 << 6) + (next_char_1 & 63);
+			if(new_char_0 = 0)
+				{
+				temp_line_out$ = temp_line_out$ + chr(new_char_1);
+				}
+			else
+				{
+				temp_line_out$ = temp_line_out$ + chr(new_char_0)+chr(new_char_1);
+				};
+			}
+		else						//3-bytes UTF8 char
+			{
+			if((rec_char_next >= 224)&&(rec_char_next < 240))
+				{
+				next_char_0 = rec_char_next;
+				next_char_1 = getc(data_to_process$);
+				next_char_2 = getc(data_to_process$);
+				rec_char_index = rec_char_index + 3;
+				new_char_0 = ((next_char_0 & 15) << 4)+((next_char_1 & 60) >> 2);
+				new_char_1 = ((next_char_1 & 3) << 6)+(next_char_2 & 63);
+				temp_line_out$ = temp_line_out$ + chr(new_char_0)+chr(new_char_1);
+				}
+			else					//4-bytes UTF8 char
+				{
+				if((rec_char_next >= 240)&&(rec_char_next < 248))
+					{
+					next_char_0 = rec_char_next;
+					next_char_1 = getc(data_to_process$);
+					next_char_2 = getc(data_to_process$);
+					next_char_3 = getc(data_to_process$);
+					rec_char_index = rec_char_index + 4;
+					new_char_0 = ((next_char_0 & 7) << 2)+((next_char_1 & 48) >> 4);
+					new_char_1 = ((next_char_1 & 15) << 4)+((next_char_2 & 60)>>2);
+					new_char_2 = ((next_char_2 & 3) << 6)+(next_char_3 & 63);
+					temp_line_out$ = temp_line_out$ + chr(new_char_0) + chr(new_char_1) +
+									chr(new_char_2);
+					}
+				}
+			}
+		};
+/*#endif*/
+/*****************************************************************************
+translate from UTF* ends
+*****************************************************************************/
+						};
+					if (menu_state=menu_state_music)
+						{
+						switch (index_from_rec+1)							//route name to the out
+							{
+							case (curr_index_disp):
+								{
+/*if cat with "All"& ind<>0*/	if (((curr_category=cat_artist)||(curr_category=cat_album)
+									||(curr_category=cat_genre)||(curr_category=cat_composer))
+									&&(curr_index_disp<>0))
+									{
+									out_line1_buf$ = temp_line_out$ ; out_line1$ = out_line1_buf$;
+									}
+								}									
+							case (curr_index_disp + 1):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line1_buf$ = temp_line_out$ ; out_line1$ = out_line1_buf$;
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									if(curr_index_disp=0)
+										{
+										out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;
+										}
+									else
+										{
+										out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;
+										};
+									};
+								}
+							case (curr_index_disp + 2):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line1_buf$ = temp_line_out$ ; out_line1$ = out_line1_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line3_buf$ = temp_line_out$ ; out_line3$ = out_line3_buf$;
+									};
+								}
+							case (curr_index_disp + 3):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line3_buf$ = temp_line_out$ ; out_line3$ = out_line3_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line4_buf$ = temp_line_out$ ; out_line4$ = out_line4_buf$;
+									};
+								}
+							case (curr_index_disp + 4):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line4_buf$ = temp_line_out$ ; out_line4$ = out_line4_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line3_buf$ = temp_line_out$ ; out_line3$ = out_line3_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line5_buf$ = temp_line_out$ ; out_line5$ = out_line5_buf$;
+									};
+								}
+							case (curr_index_disp + 5):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line5_buf$ = temp_line_out$ ; out_line5$ = out_line5_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line4_buf$ = temp_line_out$ ; out_line4$ = out_line4_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line6_buf$ = temp_line_out$ ; out_line6$ = out_line6_buf$;
+									};
+								}
+							case (curr_index_disp + 6):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line6_buf$ = temp_line_out$ ; out_line6$ = out_line6_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line5_buf$ = temp_line_out$ ; out_line5$ = out_line5_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line7_buf$ = temp_line_out$ ; out_line7$ = out_line7_buf$;
+									};
+								}
+							case (curr_index_disp + 7):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line7_buf$ = temp_line_out$ ; out_line7$ = out_line7_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line6_buf$ = temp_line_out$ ; out_line6$ = out_line6_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line8_buf$ = temp_line_out$ ; out_line8$ = out_line8_buf$;
+									};
+								}
+							case (curr_index_disp + 8):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line8_buf$ = temp_line_out$ ; out_line8$ = out_line8_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line7_buf$ = temp_line_out$ ; out_line7$ = out_line7_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line9_buf$ = temp_line_out$ ; out_line9$ = out_line9_buf$;
+									};
+								}
+							case (curr_index_disp + 9):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line9_buf$ = temp_line_out$ ; out_line9$ = out_line9_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line8_buf$ = temp_line_out$ ; out_line8$ = out_line8_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line10_buf$ = temp_line_out$ ; out_line10$ = out_line10_buf$;
+									};
+								}
+							case (curr_index_disp + 10):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line10_buf$ = temp_line_out$ ; out_line10$ = out_line10_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line9_buf$ = temp_line_out$ ; out_line9$ = out_line9_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line11_buf$ = temp_line_out$ ; out_line11$ = out_line11_buf$;
+									};
+								}
+							case (curr_index_disp + 11):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line11_buf$ = temp_line_out$ ; out_line11$ = out_line11_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line10_buf$ = temp_line_out$ ; out_line10$ = out_line10_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line12_buf$ = temp_line_out$ ; out_line12$ = out_line12_buf$;
+									};
+								}
+							case (curr_index_disp + 12):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line12_buf$ = temp_line_out$ ; out_line12$ = out_line12_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line11_buf$ = temp_line_out$ ; out_line11$ = out_line11_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line13_buf$ = temp_line_out$ ; out_line13$ = out_line13_buf$;
+									};
+								}
+							case (curr_index_disp + 13):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line13_buf$ = temp_line_out$ ; out_line13$ = out_line13_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line12_buf$ = temp_line_out$ ; out_line12$ = out_line12_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line14_buf$ = temp_line_out$ ; out_line14$ = out_line14_buf$;
+									};
+								}
+							case (curr_index_disp + 14):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line14_buf$ = temp_line_out$ ; out_line14$ = out_line14_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line13_buf$ = temp_line_out$ ; out_line13$ = out_line13_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line15_buf$ = temp_line_out$ ; out_line15$ = out_line15_buf$;
+									};
+								}
+							case (curr_index_disp + 15):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line15_buf$ = temp_line_out$ ; out_line15$ = out_line15_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line14_buf$ = temp_line_out$ ; out_line14$ = out_line14_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line16_buf$ = temp_line_out$ ; out_line16$ = out_line16_buf$;
+									};
+								}
+							case (curr_index_disp + 16):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line16_buf$ = temp_line_out$ ; out_line16$ = out_line16_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line15_buf$ = temp_line_out$ ; out_line15$ = out_line15_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line17_buf$ = temp_line_out$ ; out_line17$ = out_line17_buf$;
+									};
+								}
+							case (curr_index_disp + 17):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line17_buf$ = temp_line_out$ ; out_line17$ = out_line17_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line16_buf$ = temp_line_out$ ; out_line16$ = out_line16_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line18_buf$ = temp_line_out$ ; out_line18$ = out_line18_buf$;
+									};
+								}
+							case (curr_index_disp + 18):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line18_buf$ = temp_line_out$ ; out_line18$ = out_line18_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line17_buf$ = temp_line_out$ ; out_line17$ = out_line17_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line19_buf$ = temp_line_out$ ; out_line19$ = out_line19_buf$;
+									};
+								}
+							case (curr_index_disp + 19):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line19_buf$ = temp_line_out$ ; out_line19$ = out_line19_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line18_buf$ = temp_line_out$ ; out_line18$ = out_line18_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line20_buf$ = temp_line_out$ ; out_line20$ = out_line20_buf$;
+									};
+								}
+							case (curr_index_disp + 20):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line20_buf$ = temp_line_out$ ; out_line20$ = out_line20_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line19_buf$ = temp_line_out$ ; out_line19$ = out_line19_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line21_buf$ = temp_line_out$ ; out_line21$ = out_line21_buf$;
+									};
+								}
+							case (curr_index_disp + 21):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line21_buf$ = temp_line_out$ ; out_line21$ = out_line21_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line20_buf$ = temp_line_out$ ; out_line20$ = out_line20_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line22_buf$ = temp_line_out$ ; out_line22$ = out_line22_buf$;
+									};
+								}
+							case (curr_index_disp + 22):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line22_buf$ = temp_line_out$ ; out_line22$ = out_line22_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line21_buf$ = temp_line_out$ ; out_line21$ = out_line21_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line23_buf$ = temp_line_out$ ; out_line23$ = out_line23_buf$;
+									};
+								}
+							case (curr_index_disp + 23):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line23_buf$ = temp_line_out$ ; out_line23$ = out_line23_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line22_buf$ = temp_line_out$ ; out_line22$ = out_line22_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line24_buf$ = temp_line_out$ ; out_line24$ = out_line24_buf$;
+									};
+								}
+							case (curr_index_disp + 24):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line24_buf$ = temp_line_out$ ; out_line24$ = out_line24_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line23_buf$ = temp_line_out$ ; out_line23$ = out_line23_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line25_buf$ = temp_line_out$ ; out_line25$ = out_line25_buf$;
+									};
+								}
+							case (curr_index_disp + 25):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line25_buf$ = temp_line_out$ ; out_line25$ = out_line25_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line24_buf$ = temp_line_out$ ; out_line24$ = out_line24_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line26_buf$ = temp_line_out$ ; out_line26$ = out_line26_buf$;
+									};
+								}
+							case (curr_index_disp + 26):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line26_buf$ = temp_line_out$ ; out_line26$ = out_line26_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line25_buf$ = temp_line_out$ ; out_line25$ = out_line25_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line27_buf$ = temp_line_out$ ; out_line27$ = out_line27_buf$;
+									};
+								}
+							case (curr_index_disp + 27):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line27_buf$ = temp_line_out$ ; out_line27$ = out_line27_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line26_buf$ = temp_line_out$ ; out_line26$ = out_line26_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line28_buf$ = temp_line_out$ ; out_line28$ = out_line28_buf$;
+									};
+								}
+							case (curr_index_disp + 28):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line28_buf$ = temp_line_out$ ; out_line28$ = out_line28_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line27_buf$ = temp_line_out$ ; out_line27$ = out_line27_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line29_buf$ = temp_line_out$ ; out_line29$ = out_line29_buf$;
+									};
+								}
+							case (curr_index_disp + 29):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line29_buf$ = temp_line_out$ ; out_line29$ = out_line29_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line28_buf$ = temp_line_out$ ; out_line28$ = out_line28_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line30_buf$ = temp_line_out$ ; out_line30$ = out_line30_buf$;
+									};
+								}
+							case (curr_index_disp + 30):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line30_buf$ = temp_line_out$ ; out_line30$ = out_line30_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line29_buf$ = temp_line_out$ ; out_line29$ = out_line29_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line31_buf$ = temp_line_out$ ; out_line31$ = out_line31_buf$;
+									};
+								}
+							case (curr_index_disp + 31):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line31_buf$ = temp_line_out$ ; out_line31$ = out_line31_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line30_buf$ = temp_line_out$ ; out_line30$ = out_line30_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)||(curr_category=cat_album)||
+									(curr_category=cat_genre)||(curr_category=cat_composer))
+									{
+									out_line32_buf$ = temp_line_out$ ; out_line32$ = out_line32_buf$;
+									};
+								}
+							case (curr_index_disp + 32):
+								{
+/*if cat without "All"*/		if((curr_category = cat_song)||(curr_category = cat_podcast)||
+									(curr_category = cat_audiobook))
+									{
+									out_line32_buf$ = temp_line_out$ ; out_line32$ = out_line32_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line31_buf$ = temp_line_out$ ; out_line31$ = out_line31_buf$;								
+									};
+								}
+							case (curr_index_disp + 33):
+								{
+								if(curr_category = cat_playlist)
+									{
+									out_line32_buf$ = temp_line_out$ ; out_line32$ = out_line32_buf$;								
+									};
+								}
+							}
+						};
+					if (menu_state=menu_state_video)
+						{
+						switch (index_from_rec+1)							//route name to the out
+							{
+							case (curr_index_disp):
+								{
+/*if cat with "All"& ind<>0*/	if (((curr_category=cat_artist)&&(genre_index=1))
+									&&(curr_index_disp<>0))
+									{
+									out_line1_buf$ = temp_line_out$ ; out_line1$ = out_line1_buf$;
+									}
+								}									
+							case (curr_index_disp + 1):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line1_buf$ = temp_line_out$ ; out_line1$ = out_line1_buf$;
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									if(curr_index_disp=0)
+										{
+										out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;
+										}
+									else
+										{
+										out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;
+										};
+									};
+								}
+							case (curr_index_disp + 2):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line1_buf$ = temp_line_out$ ; out_line1$ = out_line1_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line3_buf$ = temp_line_out$ ; out_line3$ = out_line3_buf$;
+									};
+								}
+							case (curr_index_disp + 3):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line3_buf$ = temp_line_out$ ; out_line3$ = out_line3_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line2_buf$ = temp_line_out$ ; out_line2$ = out_line2_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line4_buf$ = temp_line_out$ ; out_line4$ = out_line4_buf$;
+									};
+								}
+							case (curr_index_disp + 4):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line4_buf$ = temp_line_out$ ; out_line4$ = out_line4_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line3_buf$ = temp_line_out$ ; out_line3$ = out_line3_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line5_buf$ = temp_line_out$ ; out_line5$ = out_line5_buf$;
+									};
+								}
+							case (curr_index_disp + 5):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line5_buf$ = temp_line_out$ ; out_line5$ = out_line5_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line4_buf$ = temp_line_out$ ; out_line4$ = out_line4_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line6_buf$ = temp_line_out$ ; out_line6$ = out_line6_buf$;
+									};
+								}
+							case (curr_index_disp + 6):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line6_buf$ = temp_line_out$ ; out_line6$ = out_line6_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line5_buf$ = temp_line_out$ ; out_line5$ = out_line5_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line7_buf$ = temp_line_out$ ; out_line7$ = out_line7_buf$;
+									};
+								}
+							case (curr_index_disp + 7):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line7_buf$ = temp_line_out$ ; out_line7$ = out_line7_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line6_buf$ = temp_line_out$ ; out_line6$ = out_line6_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line8_buf$ = temp_line_out$ ; out_line8$ = out_line8_buf$;
+									};
+								}
+							case (curr_index_disp + 8):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line8_buf$ = temp_line_out$ ; out_line8$ = out_line8_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line7_buf$ = temp_line_out$ ; out_line7$ = out_line7_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line9_buf$ = temp_line_out$ ; out_line9$ = out_line9_buf$;
+									};
+								}
+							case (curr_index_disp + 9):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line9_buf$ = temp_line_out$ ; out_line9$ = out_line9_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line8_buf$ = temp_line_out$ ; out_line8$ = out_line8_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line10_buf$ = temp_line_out$ ; out_line10$ = out_line10_buf$;
+									};
+								}
+							case (curr_index_disp + 10):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line10_buf$ = temp_line_out$ ; out_line10$ = out_line10_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line9_buf$ = temp_line_out$ ; out_line9$ = out_line9_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line11_buf$ = temp_line_out$ ; out_line11$ = out_line11_buf$;
+									};
+								}
+							case (curr_index_disp + 11):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line11_buf$ = temp_line_out$ ; out_line11$ = out_line11_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line10_buf$ = temp_line_out$ ; out_line10$ = out_line10_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line12_buf$ = temp_line_out$ ; out_line12$ = out_line12_buf$;
+									};
+								}
+							case (curr_index_disp + 12):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line12_buf$ = temp_line_out$ ; out_line12$ = out_line12_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line11_buf$ = temp_line_out$ ; out_line11$ = out_line11_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line13_buf$ = temp_line_out$ ; out_line13$ = out_line13_buf$;
+									};
+								}
+							case (curr_index_disp + 13):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line13_buf$ = temp_line_out$ ; out_line13$ = out_line13_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line12_buf$ = temp_line_out$ ; out_line12$ = out_line12_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line14_buf$ = temp_line_out$ ; out_line14$ = out_line14_buf$;
+									};
+								}
+							case (curr_index_disp + 14):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line14_buf$ = temp_line_out$ ; out_line14$ = out_line14_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line13_buf$ = temp_line_out$ ; out_line13$ = out_line13_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line15_buf$ = temp_line_out$ ; out_line15$ = out_line15_buf$;
+									};
+								}
+							case (curr_index_disp + 15):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line15_buf$ = temp_line_out$ ; out_line15$ = out_line15_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line14_buf$ = temp_line_out$ ; out_line14$ = out_line14_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line16_buf$ = temp_line_out$ ; out_line16$ = out_line16_buf$;
+									};
+								}
+							case (curr_index_disp + 16):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line16_buf$ = temp_line_out$ ; out_line16$ = out_line16_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line15_buf$ = temp_line_out$ ; out_line15$ = out_line15_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line17_buf$ = temp_line_out$ ; out_line17$ = out_line17_buf$;
+									};
+								}
+							case (curr_index_disp + 17):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line17_buf$ = temp_line_out$ ; out_line17$ = out_line17_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line16_buf$ = temp_line_out$ ; out_line16$ = out_line16_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line18_buf$ = temp_line_out$ ; out_line18$ = out_line18_buf$;
+									};
+								}
+							case (curr_index_disp + 18):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line18_buf$ = temp_line_out$ ; out_line18$ = out_line18_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line17_buf$ = temp_line_out$ ; out_line17$ = out_line17_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line19_buf$ = temp_line_out$ ; out_line19$ = out_line19_buf$;
+									};
+								}
+							case (curr_index_disp + 19):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line19_buf$ = temp_line_out$ ; out_line19$ = out_line19_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line18_buf$ = temp_line_out$ ; out_line18$ = out_line18_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line20_buf$ = temp_line_out$ ; out_line20$ = out_line20_buf$;
+									};
+								}
+							case (curr_index_disp + 20):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line20_buf$ = temp_line_out$ ; out_line20$ = out_line20_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line19_buf$ = temp_line_out$ ; out_line19$ = out_line19_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line21_buf$ = temp_line_out$ ; out_line21$ = out_line21_buf$;
+									};
+								}
+							case (curr_index_disp + 21):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line21_buf$ = temp_line_out$ ; out_line21$ = out_line21_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line20_buf$ = temp_line_out$ ; out_line20$ = out_line20_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line22_buf$ = temp_line_out$ ; out_line22$ = out_line22_buf$;
+									};
+								}
+							case (curr_index_disp + 22):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line22_buf$ = temp_line_out$ ; out_line22$ = out_line22_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line21_buf$ = temp_line_out$ ; out_line21$ = out_line21_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line23_buf$ = temp_line_out$ ; out_line23$ = out_line23_buf$;
+									};
+								}
+							case (curr_index_disp + 23):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line23_buf$ = temp_line_out$ ; out_line23$ = out_line23_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line22_buf$ = temp_line_out$ ; out_line22$ = out_line22_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line24_buf$ = temp_line_out$ ; out_line24$ = out_line24_buf$;
+									};
+								}
+							case (curr_index_disp + 24):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line24_buf$ = temp_line_out$ ; out_line24$ = out_line24_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line23_buf$ = temp_line_out$ ; out_line23$ = out_line23_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line25_buf$ = temp_line_out$ ; out_line25$ = out_line25_buf$;
+									};
+								}
+							case (curr_index_disp + 25):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line25_buf$ = temp_line_out$ ; out_line25$ = out_line25_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line24_buf$ = temp_line_out$ ; out_line24$ = out_line24_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line26_buf$ = temp_line_out$ ; out_line26$ = out_line26_buf$;
+									};
+								}
+							case (curr_index_disp + 26):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line26_buf$ = temp_line_out$ ; out_line26$ = out_line26_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line25_buf$ = temp_line_out$ ; out_line25$ = out_line25_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line27_buf$ = temp_line_out$ ; out_line27$ = out_line27_buf$;
+									};
+								}
+							case (curr_index_disp + 27):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line27_buf$ = temp_line_out$ ; out_line27$ = out_line27_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line26_buf$ = temp_line_out$ ; out_line26$ = out_line26_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line28_buf$ = temp_line_out$ ; out_line28$ = out_line28_buf$;
+									};
+								}
+							case (curr_index_disp + 28):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line28_buf$ = temp_line_out$ ; out_line28$ = out_line28_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line27_buf$ = temp_line_out$ ; out_line27$ = out_line27_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line29_buf$ = temp_line_out$ ; out_line29$ = out_line29_buf$;
+									};
+								}
+							case (curr_index_disp + 29):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line29_buf$ = temp_line_out$ ; out_line29$ = out_line29_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line28_buf$ = temp_line_out$ ; out_line28$ = out_line28_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line30_buf$ = temp_line_out$ ; out_line30$ = out_line30_buf$;
+									};
+								}
+							case (curr_index_disp + 30):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line30_buf$ = temp_line_out$ ; out_line30$ = out_line30_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line29_buf$ = temp_line_out$ ; out_line29$ = out_line29_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line31_buf$ = temp_line_out$ ; out_line31$ = out_line31_buf$;
+									};
+								}
+							case (curr_index_disp + 31):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line31_buf$ = temp_line_out$ ; out_line31$ = out_line31_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line30_buf$ = temp_line_out$ ; out_line30$ = out_line30_buf$;								
+									};
+/*if cat with "All"*/			if ((curr_category=cat_artist)&&(genre_index=1))
+									{
+									out_line32_buf$ = temp_line_out$ ; out_line32$ = out_line32_buf$;
+									};
+								}
+							case (curr_index_disp + 32):
+								{
+/*if cat without "All"*/		if((curr_category=cat_genre)||(curr_category=cat_song)||
+									(((curr_category=cat_artist)||(curr_category=cat_album))
+									&&(genre_index<>1)))
+									{
+									out_line32_buf$ = temp_line_out$ ; out_line32$ = out_line32_buf$;
+									};
+								if(curr_category = cat_playlist)
+									{
+									out_line31_buf$ = temp_line_out$ ; out_line31$ = out_line31_buf$;								
+									};
+								}
+							case (curr_index_disp + 33):
+								{
+								if(curr_category = cat_playlist)
+									{
+									out_line32_buf$ = temp_line_out$ ; out_line32$ = out_line32_buf$;								
+									};
+								}
+							}
+						};
+					}
+				case (0x23):									//returned playing song index
+					{
+					pl_song_index_b4 = getc(data_to_process$);
+					pl_song_index_b3 = getc(data_to_process$);
+					pl_song_index_b2 = getc(data_to_process$);
+					pl_song_index_b1 = getc(data_to_process$);
+					pl_song_index = 256 * pl_song_index_b2 + pl_song_index_b1 + 1;
+
+/*work around for iPod bug: when in video database and shuffle is songs or albums,
+getcurrentplayingsongindex returns curr_index instaed of 0
+					if(shuffle_on_video_flag) pl_song_index = 1;
+					shuffle_on_video_flag = 0;
+end of work around (see also line 104,line 423, and line 1903)*/
+
+					if(update_player_flag) call update_player_data();//get title, artist, album
+					update_player_flag = 0;
+					}
+				case (0x0A):									//return number of playing song
+					{
+					num_pl_song_b4 = getc(data_to_process$);
+					num_pl_song_b3 = getc(data_to_process$);
+					num_pl_song_b2 = getc(data_to_process$);
+					num_pl_song_b1 = getc(data_to_process$);
+					num_pl_song = (num_pl_song_b2 * 256) + num_pl_song_b1;
+					}
+				case (0x19):									//returned playing song album
+					{
+					temp_line_out$ = "";						//clear temp string
+					rec_char_index = 7;
+					while ((rec_char_index < (rec_lenght + 3))&&(rec_char_index <= char_in_rec))
+						{
+						rec_char_next = getc(data_to_process$);
+/*****************************************************************************
+translate from UTF* start -only for 2-series processor
+*****************************************************************************/
+
+	if (rec_char_next < 128)		//ASCII char
+		{
+		rec_char_index = rec_char_index + 1;
+		temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+		}
+	else							//2-bytes UTF8 char
+		{
+		if((rec_char_next >= 128)&&(rec_char_next < 224))
+			{
+			next_char_0 = rec_char_next;
+			next_char_1 = getc(data_to_process$);
+			rec_char_index = rec_char_index + 2;
+			new_char_0 = (next_char_0 & 28) >> 2;
+			new_char_1 = (next_char_0 << 6) + (next_char_1 & 63);
+			if(new_char_0 = 0)
+				{
+				temp_line_out$ = temp_line_out$ + chr(new_char_1);
+				}
+			else
+				{
+				temp_line_out$ = temp_line_out$ + chr(new_char_0)+chr(new_char_1);
+				};
+			}
+		else						//3-bytes UTF8 char
+			{
+			if((rec_char_next >= 224)&&(rec_char_next < 240))
+				{
+				next_char_0 = rec_char_next;
+				next_char_1 = getc(data_to_process$);
+				next_char_2 = getc(data_to_process$);
+				rec_char_index = rec_char_index + 3;
+				new_char_0 = ((next_char_0 & 15) << 4)+((next_char_1 & 60) >> 2);
+				new_char_1 = ((next_char_1 & 3) << 6)+(next_char_2 & 63);
+				temp_line_out$ = temp_line_out$ + chr(new_char_0)+chr(new_char_1);
+				}
+			else					//4-bytes UTF8 char
+				{
+				if((rec_char_next >= 240)&&(rec_char_next < 248))
+					{
+					next_char_0 = rec_char_next;
+					next_char_1 = getc(data_to_process$);
+					next_char_2 = getc(data_to_process$);
+					next_char_3 = getc(data_to_process$);
+					rec_char_index = rec_char_index + 4;
+					new_char_0 = ((next_char_0 & 7) << 2)+((next_char_1 & 48) >> 4);
+					new_char_1 = ((next_char_1 & 15) << 4)+((next_char_2 & 60)>>2);
+					new_char_2 = ((next_char_2 & 3) << 6)+(next_char_3 & 63);
+					temp_line_out$ = temp_line_out$ + chr(new_char_0) + chr(new_char_1) +
+									chr(new_char_2);
+					}
+				}
+			}
+		};
+
+/*****************************************************************************
+translate from UTF* ends
+*****************************************************************************/
+						};
+					playing_album$ = temp_line_out$;
+					}
+				case (0x1D):									//returned playing song title
+					{
+					temp_line_out$ = "";						//clear temp string
+					rec_char_index = 7;
+					while ((rec_char_index < (rec_lenght + 3))&&(rec_char_index <= char_in_rec))
+						{
+						rec_char_next = getc(data_to_process$);
+						if (!rec_char_next) break;
+/*****************************************************************************
+translate from UTF* start -only for 2-series processor
+*****************************************************************************/
+
+	if (rec_char_next < 128)		//ASCII char
+		{
+		rec_char_index = rec_char_index + 1;
+		temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+		}
+	else							//2-bytes UTF8 char
+		{
+		if((rec_char_next >= 128)&&(rec_char_next < 224))
+			{
+			next_char_0 = rec_char_next;
+			next_char_1 = getc(data_to_process$);
+			rec_char_index = rec_char_index + 2;
+			new_char_0 = (next_char_0 & 28) >> 2;
+			new_char_1 = (next_char_0 << 6) + (next_char_1 & 63);
+			if(new_char_0 = 0)
+				{
+				temp_line_out$ = temp_line_out$ + chr(new_char_1);
+				}
+			else
+				{
+				temp_line_out$ = temp_line_out$ + chr(new_char_0)+chr(new_char_1);
+				};
+			}
+		else						//3-bytes UTF8 char
+			{
+			if((rec_char_next >= 224)&&(rec_char_next < 240))
+				{
+				next_char_0 = rec_char_next;
+				next_char_1 = getc(data_to_process$);
+				next_char_2 = getc(data_to_process$);
+				rec_char_index = rec_char_index + 3;
+				new_char_0 = ((next_char_0 & 15) << 4)+((next_char_1 & 60) >> 2);
+				new_char_1 = ((next_char_1 & 3) << 6)+(next_char_2 & 63);
+				temp_line_out$ = temp_line_out$ + chr(new_char_0)+chr(new_char_1);
+				}
+			else					//4-bytes UTF8 char
+				{
+				if((rec_char_next >= 240)&&(rec_char_next < 248))
+					{
+					next_char_0 = rec_char_next;
+					next_char_1 = getc(data_to_process$);
+					next_char_2 = getc(data_to_process$);
+					next_char_3 = getc(data_to_process$);
+					rec_char_index = rec_char_index + 4;
+					new_char_0 = ((next_char_0 & 7) << 2)+((next_char_1 & 48) >> 4);
+					new_char_1 = ((next_char_1 & 15) << 4)+((next_char_2 & 60)>>2);
+					new_char_2 = ((next_char_2 & 3) << 6)+(next_char_3 & 63);
+					temp_line_out$ = temp_line_out$ + chr(new_char_0) + chr(new_char_1) +
+									chr(new_char_2);
+					}
+				}
+			}
+		};
+
+/*****************************************************************************
+translate from UTF* ends
+*****************************************************************************/;
+						};
+					playing_title$ = temp_line_out$;
+					}
+				case (0x1F):									//returned playing song artist
+					{
+					temp_line_out$ = "";						//clear temp string
+					rec_char_index = 7;
+					while ((rec_char_index < (rec_lenght + 3))&&(rec_char_index <= char_in_rec))
+						{
+						rec_char_next = getc(data_to_process$);
+						if (!rec_char_next) break;
+/*****************************************************************************
+translate from UTF* start -only for 2-series processor
+*****************************************************************************/
+
+	if (rec_char_next < 128)		//ASCII char
+		{
+		rec_char_index = rec_char_index + 1;
+		temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+		}
+	else							//2-bytes UTF8 char
+		{
+		if((rec_char_next >= 128)&&(rec_char_next < 224))
+			{
+			next_char_0 = rec_char_next;
+			next_char_1 = getc(data_to_process$);
+			rec_char_index = rec_char_index + 2;
+			new_char_0 = (next_char_0 & 28) >> 2;
+			new_char_1 = (next_char_0 << 6) + (next_char_1 & 63);
+			if(new_char_0 = 0)
+				{
+				temp_line_out$ = temp_line_out$ + chr(new_char_1);
+				}
+			else
+				{
+				temp_line_out$ = temp_line_out$ + chr(new_char_0)+chr(new_char_1);
+				};
+			}
+		else						//3-bytes UTF8 char
+			{
+			if((rec_char_next >= 224)&&(rec_char_next < 240))
+				{
+				next_char_0 = rec_char_next;
+				next_char_1 = getc(data_to_process$);
+				next_char_2 = getc(data_to_process$);
+				rec_char_index = rec_char_index + 3;
+				new_char_0 = ((next_char_0 & 15) << 4)+((next_char_1 & 60) >> 2);
+				new_char_1 = ((next_char_1 & 3) << 6)+(next_char_2 & 63);
+				temp_line_out$ = temp_line_out$ + chr(new_char_0)+chr(new_char_1);
+				}
+			else					//4-bytes UTF8 char
+				{
+				if((rec_char_next >= 240)&&(rec_char_next < 248))
+					{
+					next_char_0 = rec_char_next;
+					next_char_1 = getc(data_to_process$);
+					next_char_2 = getc(data_to_process$);
+					next_char_3 = getc(data_to_process$);
+					rec_char_index = rec_char_index + 4;
+					new_char_0 = ((next_char_0 & 7) << 2)+((next_char_1 & 48) >> 4);
+					new_char_1 = ((next_char_1 & 15) << 4)+((next_char_2 & 60)>>2);
+					new_char_2 = ((next_char_2 & 3) << 6)+(next_char_3 & 63);
+					temp_line_out$ = temp_line_out$ + chr(new_char_0) + chr(new_char_1) +
+									chr(new_char_2);
+					}
+				}
+			}
+		};
+
+/*****************************************************************************
+translate from UTF* ends
+*****************************************************************************/
+						};
+					playing_artist$ = temp_line_out$;
+					}
+				case (0x1B):									//play status change notificaton
+					{
+					player_status = getc(data_to_process$);
+					switch (player_status)
+						{
+						case (0x00):								//playback stopped
+							{
+							call player_stopped();
+							}
+						case (0x01):							//playback song changed
+							{
+							pl_song_index_b4 = getc(data_to_process$);
+							pl_song_index_b3 = getc(data_to_process$);
+							pl_song_index_b2 = getc(data_to_process$);
+							pl_song_index_b1 = getc(data_to_process$);
+							pl_song_index = 256 * pl_song_index_b2 + pl_song_index_b1 + 1;
+							call update_player_data();			//get title, artist, album
+							delay(delaytime);
+							call send_get_play_status();		//update song lenght,pos,pl status,cancel waits
+							}
+
+						case (0x04):
+							{
+							song_position_b4 = getc(data_to_process$);
+							song_position_b3 = getc(data_to_process$);
+							song_position_b2 = getc(data_to_process$);
+							song_position_b1 = getc(data_to_process$);
+							call calc_song_position ();
+							}
+						}
+					}
+				case (0x21):									//return play status
+					{
+					song_lenght_b4 = getc(data_to_process$);
+					song_lenght_b3 = getc(data_to_process$);
+					song_lenght_b2 = getc(data_to_process$);
+					song_lenght_b1 = getc(data_to_process$);
+					call calc_song_lenght();
+					song_position_b4 = getc(data_to_process$);
+					song_position_b3 = getc(data_to_process$);
+					song_position_b2 = getc(data_to_process$);
+					song_position_b1 = getc(data_to_process$);
+					player_state_code = getc(data_to_process$);
+					call calc_song_position ();
+					switch (player_state_code)
+						{
+						case (0x00):					//stopped
+							{
+							call player_stopped();
+							}
+						case (0x01):					//playing
+							{
+							call player_playing();
+							}
+						case (0x02):					//paused
+							{
+							call player_paused();
+							}
+						}; 
+					}
+				case (0x25):						//return number of categorized db records
+					{
+					num_cat_rec_b4 = getc(data_to_process$);
+					num_cat_rec_b3 = getc(data_to_process$);
+					num_cat_rec_b2 = getc(data_to_process$);
+					num_cat_rec_b1 = getc(data_to_process$);
+					num_cat_rec = (num_cat_rec_b2 * 256) + num_cat_rec_b1;
+					curr_ind_up_lim = num_cat_rec - 1;
+					switch(curr_category)
+						{
+						case(cat_playlist):
+							{
+							num_of_playlists = num_cat_rec - 1;
+							}
+						case(cat_artist):
+							{
+							num_of_artists = num_cat_rec - 1;
+							}
+						case(cat_album):
+							{
+							num_of_albums = num_cat_rec - 1;
+							}
+						case(cat_genre):
+							{
+							num_of_genres = num_cat_rec - 1;
+							}
+						case(cat_song):
+							{
+							num_of_songs = num_cat_rec - 1;
+							}
+						case(cat_podcast):
+							{
+							num_of_podcasts = num_cat_rec - 1;
+							}
+						case(cat_composer):
+							{
+							num_of_composers = num_cat_rec - 1;
+							}
+						case(cat_audiobook):
+							{
+							num_of_audiobooks = num_cat_rec - 1;
+							}
+						};
+					call update_curr_ind_disp();;
+					call update_dis_ind_rec();													//calls send_retr_recs
+					call update_slider();
+					switch(retr_flag)
+						{
+						case(1): {call send_retr_recs (curr_index_disp - 1);retr_flag = 0;}		//current display does not includes "All" (retr. curr index_display)
+						case(2): {call send_retr_recs (curr_index_disp);retr_flag = 0;}			//current display does includes "All" (retr. curr index_display-1)
+						case(3): {call send_retr_recs (curr_index_disp + 1);retr_flag = 0;}		//for playlist (retr. curr index_display+1)
+						case(4):																//for video menu (retr. curr index_display-1)
+                            {
+							retr_flag = 0;
+							if ((num_cat_rec = 1)&&(menu_state=menu_state_video)&&
+								(curr_category<>cat_song))
+                            	{
+								call enter_pressed_for_skip();
+								}
+							else call send_retr_recs (curr_index_disp);
+							}
+						};
+
+
+					}
+				case (0x29):									//returned iPod name
+					{
+					temp_line_out$ = "";						//clear temp string
+					rec_char_index = 7;
+					while ((rec_char_index < (rec_lenght + 3))&&(rec_char_index <= char_in_rec))
+						{
+						rec_char_next = getc(data_to_process$);
+						if (!rec_char_next) break;
+						rec_char_index = rec_char_index + 1;
+						temp_line_out$ = temp_line_out$ + chr(rec_char_next);
+						};
+					ipod_name$ = temp_line_out$;
+					}
+				case (0x0C):									//repeat status
+					{
+					repeat_code = getc(data_to_process$);
+					switch(repeat_code)
+						{
+						case(0x00):
+							{
+							repeat_one_fb = 0;
+							repeat_all_fb = 0;
+							repeat_off_fb = 1;
+							}
+						case(0x01):
+							{
+							repeat_one_fb = 1;
+							repeat_all_fb = 0;
+							repeat_off_fb = 0;
+							}
+						case(0x02):
+							{
+							repeat_one_fb = 0;
+							repeat_all_fb = 1;
+							repeat_off_fb = 0;
+							}
+						}
+					}
+				case (0x11):									//shuffle status
+					{
+					shuffle_code = getc(data_to_process$);
+					switch(shuffle_code)
+						{
+						case(0x00):
+							{
+							shuffle_songs_fb = 0;
+							shuffle_albums_fb = 0;
+							shuffle_off_fb = 1;
+							}
+						case(0x01):
+							{
+							shuffle_songs_fb = 1;
+							shuffle_albums_fb = 0;
+							shuffle_off_fb = 0;
+							}
+						case(0x02):
+							{
+							shuffle_songs_fb = 0;
+							shuffle_albums_fb = 1;
+							shuffle_off_fb = 0;
+							}
+						}
+					}
+												 
+				}
+			};
+		}
+
+
+                          
+/*******************************************************************************************
+
+parse incoming serial data ends:
+          
+******************************************************************************************/
+	
+change data_in$ 								// trigger whenever a character comes in
+	{
+	if (!RxOk)
+		{
+		RxOk = 1;
+		while (len(data_in$))
+			{
+			if ((char_1 = 0x2A)&&((char_2 = 0x49)||(char_2 = 0x4D)||
+				(char_2 = 0x57)||(char_2 = 0x42))&&(char_3 = 0x00)) // is it begining of the string?
+				{
+				data_to_process$ = chr(char_1) + chr(char_2) + chr(char_3) + chr(char_4);	
+				char_index = 4;
+				packet_lenght = char_4;
+				};
+			char_1 = char_2;
+			char_2 = char_3;
+			char_3 = char_4;
+			char_4 = getc(data_in$);
+			data_to_process$ = data_to_process$ + chr(char_4);
+			char_index = char_index + 1;
+			if (char_index = packet_lenght + 4)
+				{	
+				call analize_in_data (data_to_process$);
+				data_to_process$ = "";
+				char_1 = 0;
+				char_2 = 0;
+				char_3 = 0;
+				char_4 = 0;
+				}
+			};
+		RxOk = 0;
+		}
+	}
+
+
+/*******************************************************************************************
+
+push up:		ok
+          
+*******************************************************************************************/
+
+
+push up
+        
+	{
+	if(browse_fb)
+		{
+		if (play_fb = 1)
+			{
+			retimewait (1000, player_wait);
+			};
+		if (((curr_index+1) - (curr_ind_low_lim+1)) > 0 )	//...+1 for index = -1 (series3 controler)
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			prev_index_disp = curr_index_disp;
+			curr_index = curr_index - 1;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_podcast) : podcast_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				case(cat_audiobook) : audiobook_index = curr_index;
+				};
+	 		call update_curr_ind_disp();
+			call update_dis_ind_rec();
+			};
+		call update_slider();
+		}
+	}
+
+
+
+/*******************************************************************************************
+
+push down:		ok
+          
+*******************************************************************************************/
+
+
+push down
+
+	{
+	if(browse_fb)
+		{
+		if (play_fb = 1)
+			{
+			retimewait (1000, player_wait);
+			};
+		if ((curr_index < curr_ind_up_lim)||(curr_index = -1))
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			prev_index_disp = curr_index_disp;
+			curr_index = curr_index + 1;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_podcast) : podcast_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				case(cat_audiobook) : audiobook_index = curr_index;
+				};
+	 		call update_curr_ind_disp();
+			call update_dis_ind_rec();
+			};
+		call update_slider();
+		}
+	}
+
+/*******************************************************************************************
+
+push fast up:		ok
+          
+*******************************************************************************************/
+
+
+push fast_up
+
+	{
+	if(browse_fb)
+		{
+		if (play_fb = 1)
+			{
+			retimewait (1000, player_wait);
+			};
+		if (fast_num_of_rec <= 2) fast_n_o_r = 2;
+		if (fast_num_of_rec >= 50) fast_n_o_r = 50;
+		if ((fast_num_of_rec > 2)&&(fast_num_of_rec < 50)) fast_n_o_r = fast_num_of_rec;
+		if ((curr_index >= (fast_n_o_r + curr_ind_low_lim))&&(curr_index <> -1))
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			prev_index_disp = curr_index_disp;
+			curr_index = curr_index - fast_n_o_r;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_podcast) : podcast_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				case(cat_audiobook) : audiobook_index = curr_index;
+				};
+			}
+		else
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			curr_index = curr_ind_low_lim;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_podcast) : podcast_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				case(cat_audiobook) : audiobook_index = curr_index;
+				};
+			};
+	 	call update_curr_ind_disp();
+		call update_dis_ind_rec();
+		call update_slider();
+		}
+	}
+
+
+
+/*******************************************************************************************
+
+push fast down:		ok
+          
+*******************************************************************************************/
+
+
+push fast_down
+
+	{
+	if(browse_fb)
+		{
+		if (play_fb = 1)
+			{
+			retimewait (1000, player_wait);
+			};
+		if (fast_num_of_rec <= 2) fast_n_o_r = 2;
+		if (fast_num_of_rec >= 50) fast_n_o_r = 50;
+		if ((fast_num_of_rec > 2)&&(fast_num_of_rec < 50)) fast_n_o_r = fast_num_of_rec;
+		if ((curr_index + fast_n_o_r) <= curr_ind_up_lim)
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			prev_index_disp = curr_index_disp;
+			curr_index = curr_index + fast_n_o_r;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_podcast) : podcast_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				case(cat_audiobook) : audiobook_index = curr_index;
+				};
+			}
+		else
+			{
+			if(!index_change_flag) prev_curr_index = curr_index;
+			index_change_flag = 1;
+			curr_index = curr_ind_up_lim;
+			switch (curr_category)
+				{
+				case(cat_main) : main_index = curr_index;
+				case(cat_playlist) : playlist_index = curr_index;
+				case(cat_artist) : artist_index = curr_index;
+				case(cat_album) : album_index = curr_index;
+				case(cat_song) : song_index = curr_index;
+				case(cat_podcast) : podcast_index = curr_index;
+				case(cat_genre) : genre_index = curr_index;
+				case(cat_composer) : composer_index = curr_index;
+				case(cat_audiobook) : audiobook_index = curr_index;
+				};
+			};
+	 	call update_curr_ind_disp();
+		call update_dis_ind_rec();
+		call update_slider();
+		}
+	}
+
+
+/*******************************************************************************************
+
+shuffle:			ok
+          
+*******************************************************************************************/
+
+
+push shuffle_off
+	{
+	call send_shuffle(0x00);			//off
+	}
+
+push shuffle_songs
+	{
+	call send_shuffle(0x01);			//songs
+	}
+
+push shuffle_albums
+	{
+	call send_shuffle(0x02);			//albums
+	}
+
+push shuffle
+	{
+	if (shuffle_off_fb) call send_shuffle(0x01);		//songs
+	else
+		{
+		if (shuffle_songs_fb) call send_shuffle(0x02);		//albums
+		else
+			{
+			if (shuffle_albums_fb) call send_shuffle(0x00);		//off
+			}
+		}
+	}
+
+
+/*******************************************************************************************
+
+repeat:			ok
+          
+*******************************************************************************************/
+
+
+push repeat_off
+	{
+	call send_repeat(0x00);			//off
+	}
+
+push repeat_one
+	{
+	call send_repeat(0x01);			//one track
+	}
+
+push repeat_all
+	{
+	call send_repeat(0x02);			//all
+	}
+
+push repeat
+	{
+	if (repeat_off_fb) call send_repeat(0x01);		//one track
+	else
+		{
+		if (repeat_one_fb) call send_repeat(0x02);		//all
+        else
+			{
+			if (repeat_all_fb) call send_repeat(0x00);		//off
+			}
+		}
+	}
+
+
+/*******************************************************************************************
+
+enter - exit remote UI mode:		ok
+          
+*******************************************************************************************/
+
+
+	push enter_rem_UI
+		{
+		out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x3C)+chr(0x3C)+
+						 chr(0x39)+chr(0x03);
+		}
+
+	push exit_rem_UI
+		{
+		out_to_iport$ = chr(0x2A)+chr(0x49)+chr(0x00)+chr(0x03)+chr(0x3C)+chr(0x3C)+
+						 chr(0x3A)+chr(0x02);
+		}
+
+
+
+/*******************************************************************************************
+
+request firmware version:		ok
+          
+*******************************************************************************************/
+
+
+	push request_firm_ver
+		{
+		out_to_iport$ = chr(0x2A)+chr(0x4D)+chr(0x00)+chr(0x04)+chr(0x01)+chr(0x00)+
+						 chr(0x00)+chr(0x00)+chr(0xAE);
+		}
+
+
+
+/*******************************************************************************************
+
+slider:		ok
+          
+*******************************************************************************************/
+
+
+change slider_in
+	{
+	if (play_fb = 1)
+		{
+		retimewait (1000, player_wait);
+		};
+	if(!index_change_flag) prev_curr_index = curr_index;
+	index_change_flag = 1;
+	curr_index = MULDIV((65535 - slider_in),((curr_ind_up_lim-curr_ind_low_lim)UMOD 65536)
+				,65535);
+	call update_curr_ind_disp();
+	call update_dis_ind_rec();
+	call update_slider();
+	}
+
+
+/*******************************************************************************************
+
+char_in_rec_10to50:		ok
+          
+*******************************************************************************************/
+
+
+change char_in_rec_10to50
+	{
+	if (char_in_rec_10to50 < 10) char_in_rec = 21;
+	if (char_in_rec_10to50 > 50) char_in_rec = 61;
+	if ((char_in_rec_10to50 >= 10)&&(char_in_rec_10to50 <= 50))
+		{
+		char_in_rec = (char_in_rec_10to50 + 11);
+		};
+	}
+
+
+/*******************************************************************************************
+
+num_of_lines_2to32:		ok
+          
+*******************************************************************************************/
+
+
+change num_of_lines_2to32
+	{
+	if (num_of_lines_2to32 < 2) num_of_lines = 2;
+	if (num_of_lines_2to32 > 32) num_of_lines = 32;
+	if ((num_of_lines_2to32 >= 2)&&(num_of_lines_2to32 <= 32))
+		{
+		num_of_lines = (num_of_lines_2to32);
+		};
+	}
+
+
+/*******************************************************************************************
+
+video menu:		ok
+
+Video menu can be accessed after sending ResetDBHierachy. The top video menu is on Genre level,
+and includes Movies, Music Videos, TV Shows, and Video Podcasts.
+Movies contains no attists, and no albums (returns record numbers =1 for both, artists and albums).
+To get the right movies (songs) list, artist num 0,and album num 0 has to selected (0x2B),
+before retrieving the movies (songs) list.
+The following sequence has to be sent to the iPod: ResetDBHirarhy(...0x02); 0x2B,0x04,...0x00...;
+0x24,0x02; if 0x25 returns num of records=1, select artist 0: 0x2B,0x02...0x00; 0x24,0x03; 
+if 0x25 returns num of records=1, select album 0: 0x2B,0x03...0x00; retrieve movies (songs): 0x24,0x05...0x26,0x05...
+Music Videos, TV Shows, and Video Podcasts contains list of artists, but contains no albums
+(returns record numbers =1 for albums). To get the right record (songs) list, after retrieving the artists,
+album num 0 has to be selected, before retrieving the songs list. In addition, to get the right
+songs list for another artist (going from songs to artist, and back to the songs), the ResetDBHierachy, and
+select genre 0x01, 0x02, or 0x03, has to be sent before retrieving songs for another artist.
+The following sequence has to be sent to the iPod: ResetDBHirarhy(...0x02); 0x2B,0x04,...0x01/0x02/0x03...;
+retrieve artists: 0x24,0x02; select artist: 0x2B,0x02...0xNN; retrieve albums: 0x24,0x03; 
+if 0x25 returns num of records=1, select album 0: 0x2B,0x03...0x00; retrieve songs: 0x24,0x05...;0x26,0x05...
+          
+*******************************************************************************************/
+
+
+push video_menu
+	{
+	curr_path = path_genre;
+	page_title$ = "Videos";
+	curr_category = cat_genre;
+	if (menu_state = menu_state_music)
+		{
+		playlist_index = 1;
+		artist_index = 0;
+		album_index = 0;
+		song_index = 0;
+		podcast_index = 0;
+		genre_index = 0;
+		composer_index = 0;
+		audiobook_index = 0;
+		index_change_flag = 0;
+		call reset_db_selection_hierarchy();
+		if (play_fb = 1) call pause_pressed();
+		call activate_browse ();
+		};
+	curr_ind_low_lim = 0;
+	curr_index = genre_index;
+	retr_flag = 4;					//ret num cat rec will send retr(ind dis) if # of rec>0
+	menu_state = menu_state_video;
+	music_menu_fb = 0;
+	video_menu_fb = 1;
+	call send_get_num_cat_rec();	//will ret curr_up_lim+send_update:curr_ind_disp,dis_ind_rec,slider
+	}
+
+
+/*******************************************************************************************
+
+music menu:		ok
+          
+*******************************************************************************************/
+
+
+push music_menu
+	{
+	page_title$ = "Music";					
+	call reset_db_selection();
+	curr_category = cat_main;
+	curr_ind_low_lim = 0;
+	curr_ind_up_lim = 7;
+	if (menu_state = menu_state_video)
+		{
+		main_index = 0;
+		if (play_fb = 1) call pause_pressed();
+		call activate_browse ();
+		};
+	menu_state = menu_state_music;
+	call display_main_lines();
+	music_menu_fb = 1;
+	video_menu_fb = 0;
+	curr_index = main_index;
+	call update_curr_ind_disp();;
+	call update_dis_ind_rec();
+	call update_slider();
+	}
+		
+
+
+			

@@ -1,0 +1,205 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name: Xperinet
+System Name: MIRV Module
+System Number:
+Programmer:
+Comments:
+*/
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+#SYMBOL_NAME "Xperinet MIRV API2 Feedback Parser & Command Generator r01"
+#HINT "Used Within the Xperinet MIRV API2 Control Module"
+#DEFINE_CONSTANT ERROR_WAIT_TIME 500
+// #CATEGORY "" 
+// #DEFAULT_VOLATILE
+// #DEFAULT_NONVOLATILE
+// #ENABLE_STACK_CHECKING
+
+#HELP_BEGIN
+This module is designed to work within the Xperinet MIRV API2 Control Module
+to generate properly formatted commands and parse incoming feedback.
+
+This module was tested with version 2.2-49 of Xperinet MIRV firmware.
+Firmware versions beyond the version listed above may provide results that
+vary from the documented operation of the module.
+#HELP_END
+
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional librarys as needed)
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT CLEAR_STATUS_STRINGS;
+ANALOG_INPUT ZONE_IN;
+STRING_INPUT IN$[300], CMD$[100], SEARCH$[100], SEARCH_CMD$[100];
+// BUFFER_INPUT 
+
+DIGITAL_OUTPUT ERROR_PULSE, API2_OK;
+ANALOG_OUTPUT ZONE_OUT;
+STRING_OUTPUT TX$, ERROR$, OUT$[40];
+/*******************************************************************************************
+  Structure Definitions
+  (Uncomment and define structure definitions as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: struct.myString = "";
+*******************************************************************************************/
+// STRUCTURE MyStruct1
+// {
+// };
+
+// MyStruct1 struct;
+
+/*******************************************************************************************
+  Global Variables
+  (Uncomment and declare global variables as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: myString = "";
+*******************************************************************************************/
+INTEGER ZONE;//Used to hold the value of the zone being controlled
+INTEGER WAIT_FLAG;//Used to determine if the system is waiting to reset the error$
+STRING TEMP$[5];//Temporary variables used in parsing routine
+STRING SURROUND_TEMP$[100];
+STRING TEMP_ERROR$[30];
+INTEGER TEMP_AN, MSG_TYPE;
+
+/*******************************************************************************************
+  Functions
+  (Add any additional functions here)
+  Note:  Functions must be physically placed before the location in
+         the code that calls them.
+*******************************************************************************************/
+Function CLEAR_ERROR()
+{
+    WAIT_FLAG = 1;
+    WAIT(ERROR_WAIT_TIME, ERROR_CLEAR)
+    {
+    	ERROR$="";
+    	WAIT_FLAG = 0;
+    }
+}
+
+/*******************************************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+CHANGE ZONE_IN
+{
+	IF (ZONE_IN < 1 || ZONE_IN > 99)//Check to see that zone is in valid range
+	{
+		ZONE = 1;//If invalid set zone to 1
+	}
+	ELSE 
+	{
+		ZONE = ZONE_IN;
+	}
+	ZONE_OUT = ZONE;
+	MAKESTRING(TX$, "*%02d/report status\n", ZONE);//ask for status after changing zone to make sure it is defined
+}
+
+CHANGE CMD$
+{
+ 	MAKESTRING(TX$, "*%02d/%s\n", ZONE, CMD$);//send out standard commands
+}
+
+CHANGE SEARCH_CMD$
+{
+ 	MAKESTRING(TX$, "*%02d/%s %s\n", ZONE, SEARCH_CMD$, SEARCH$);//send out search or text specific commands
+}
+
+PUSH CLEAR_STATUS_STRINGS
+{
+	SETARRAY(OUT$, "");//Clear output strings
+}
+
+CHANGE IN$//Feedback parsing
+{
+/*
+	STRING TEMP$[5];
+	STRING SURROUND_TEMP$[100];
+	STRING TEMP_ERROR$[30];
+	INTEGER TEMP_AN, MSG_TYPE;
+*/
+	IF (FIND("*", IN$) <> 1)//Terminate if response does not start with *
+	{
+		TERMINATEEVENT;
+	}
+	TEMP$ = REMOVE("/", IN$);
+	TEMP_AN = ATOI(TEMP$);
+	IF (TEMP_AN <> ZONE)//Check that response is for the current zone
+	{
+		TERMINATEEVENT;
+	}
+	IF (FIND("/", IN$)=0)//Parsing messages that do not have a status tag
+	{
+		IF (IN$ = "OK\n")
+		{
+			TERMINATEEVENT;
+		}
+		ELSE IF (IN$ = "Invalid Command\n")
+		{
+			ERROR$ = "Invalid Command";
+			IF (WAIT_FLAG)
+			{
+				RETIMEWAIT(ERROR_WAIT_TIME, ERROR_CLEAR);
+			}
+			ELSE
+			{
+				CALL CLEAR_ERROR();
+			}
+		}
+		TERMINATEEVENT;
+	}
+	TEMP$ = REMOVE("/", IN$);
+	MSG_TYPE = ATOI(TEMP$);
+	IF ( MSG_TYPE = 99)//Error response handling
+	{
+		TEMP_ERROR$ = LEFT(IN$, (LEN(IN$) - 2));
+		ERROR$ = TEMP_ERROR$;
+		IF (TEMP_ERROR$ = "unknown zone")
+		{
+			PRINT("RESETTING CONTROL ZONE TO 1\n");
+			ZONE = 1;
+			ZONE_OUT = ZONE;
+		}
+		PULSE(25, ERROR_PULSE);
+		IF (WAIT_FLAG)
+		{
+			RETIMEWAIT(ERROR_WAIT_TIME, ERROR_CLEAR);
+		}
+		ELSE
+		{
+			CALL CLEAR_ERROR();
+		}
+	}
+	ELSE IF (MSG_TYPE = 98)//API v2 being used
+	{
+		PULSE(10, API2_OK);
+	}
+	ELSE//All other status responses
+	{
+		OUT$[MSG_TYPE] = LEFT(IN$, (LEN(IN$) - 2));
+	}
+}
+/*******************************************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+*******************************************************************************************/
+Function Main()
+{
+	WAIT_FLAG = 0;
+	ZONE = 1;
+	ZONE_OUT = ZONE;
+}

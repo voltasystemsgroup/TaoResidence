@@ -1,0 +1,435 @@
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+ram              0x80000000         0x00500000         xrw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+                0x00000000                __DYNAMIC=0x0
+                0x00400000                PROVIDE (__stack, 0x400000)
+                0x00000000                PROVIDE (hardware_init_hook, 0x0)
+                0x00000000                PROVIDE (_hardware_init_hook, 0x0)
+                0x00000000                PROVIDE (software_init_hook, 0x0)
+                0x00000000                PROVIDE (_software_init_hook, 0x0)
+
+.text           0x80000000    0x4df40
+ *(.text)
+ .text          0x80000000      0xe1c S2_Managed_Power___Input_v1_00.o
+                0x80000cb0                S2_Managed_Power___Input_v1_00EventHandler00003
+                0x80000b20                S2_Managed_Power___Input_v1_00_EventHandler
+                0x800005e4                S2_Managed_Power___Input_v1_00EventHandler00002
+                0x8000030e                S2_Managed_Power___Input_v1_00EventHandler00000
+                0x80000bce                S2_Managed_Power___Input_v1_00_main
+                0x8000045e                S2_Managed_Power___Input_v1_00EventHandler00001
+                0x80000d6c                S2_Managed_Power___Input_v1_00EventHandler00005
+                0x8000089e                S2_Managed_Power___Input_v1_00EventHandler00004
+ .text          0x80000e1c      0x33c S2_Managed_Power___Input_f_x__v1_00.o
+                0x80000fae                S2_Managed_Power___Input_f_x__v1_00_EventHandler
+                0x80001078                S2_Managed_Power___Input_f_x__v1_00_main
+                0x80000e1c                S2_Managed_Power___Input_f_x__v1_00EventHandler00000
+ .text          0x80001158     0x3794 S2_Marantz_AV7702_Processor_v1_0.o
+                0x800046de                S2_Marantz_AV7702_Processor_v1_0_main
+                0x800045ea                S2_Marantz_AV7702_Processor_v1_0_EventHandler
+                0x800013a4                S2_Marantz_AV7702_Processor_v1_0EventHandler00000
+                0x80001d34                S2_Marantz_AV7702_Processor_v1_0EventHandler00001
+ .text          0x800048ec      0x196 S2_Digital_Edge_Detection_v1_00.o
+                0x80004a36                S2_Digital_Edge_Detection_v1_00EventHandler00001
+                0x800049ec                S2_Digital_Edge_Detection_v1_00EventHandler00000
+                0x800048ec                S2_Digital_Edge_Detection_v1_00_EventHandler
+                0x800049a6                S2_Digital_Edge_Detection_v1_00_main
+ *fill*         0x80004a82        0x2
+ .text          0x80004a84      0x3ec S2_Managed_Power_v1_00.o
+                0x80004dc4                S2_Managed_Power_v1_00EventHandler00002
+                0x80004c4a                S2_Managed_Power_v1_00_main
+                0x80004d1a                S2_Managed_Power_v1_00EventHandler00000
+                0x80004c90                S2_Managed_Power_v1_00_EventHandler
+                0x80004e04                S2_Managed_Power_v1_00EventHandler00003
+                0x80004d5a                S2_Managed_Power_v1_00EventHandler00001
+ .text          0x80004e70    0x40ad0 S2_iPort_v04_2.o
+                0x8002e116                S2_iPort_v04_2EventHandler00023
+                0x80044c4c                S2_iPort_v04_2NEXT_WAIT
+                0x8002b5b6                S2_iPort_v04_2EventHandler00013
+                0x8002aade                S2_iPort_v04_2EventHandler0000F
+                0x800297f8                S2_iPort_v04_2EventHandler00008
+                0x8002ad94                S2_iPort_v04_2EventHandler00010
+                0x8002e3cc                S2_iPort_v04_2EventHandler00024
+                0x8002c8b0                S2_iPort_v04_2EventHandler0001A
+                0x80029546                S2_iPort_v04_2EventHandler00007
+                0x80045368                S2_iPort_v04_2EventHandler0002D
+                0x800455ee                S2_iPort_v04_2EventHandler00038
+                0x800231e8                S2_iPort_v04_2EventHandler00002
+                0x80045796                S2_iPort_v04_2EventHandler0003B
+                0x800426ba                S2_iPort_v04_2EventHandler00045
+                0x8002c344                S2_iPort_v04_2EventHandler00018
+                0x80044c0e                S2_iPort_v04_2PLAYER_WAIT_MAIN
+                0x800416b2                S2_iPort_v04_2EventHandler0003F
+                0x8002dbaa                S2_iPort_v04_2EventHandler00021
+                0x80045118                S2_iPort_v04_2EventHandler00029
+                0x80043264                S2_iPort_v04_2_EventHandler
+                0x800403d8                S2_iPort_v04_2EventHandler00033
+                0x8002d8f4                S2_iPort_v04_2EventHandler00020
+                0x80045062                S2_iPort_v04_2EventHandler00028
+                0x8002bb22                S2_iPort_v04_2EventHandler00015
+                0x800452a2                S2_iPort_v04_2EventHandler0002C
+                0x80028fe2                S2_iPort_v04_2EventHandler00005
+                0x8002a828                S2_iPort_v04_2EventHandler0000E
+                0x8002ce1c                S2_iPort_v04_2EventHandler0001C
+                0x80044d58                S2_iPort_v04_2EventHandler00000
+                0x80042110                S2_iPort_v04_2EventHandler00043
+                0x8002c5fa                S2_iPort_v04_2EventHandler00019
+                0x80041fc4                S2_iPort_v04_2EventHandler00042
+                0x8002d388                S2_iPort_v04_2EventHandler0001E
+                0x8002e76a                S2_iPort_v04_2EventHandler00025
+                0x800457e4                S2_iPort_v04_2EventHandler0003C
+                0x8002b300                S2_iPort_v04_2EventHandler00012
+                0x80044dbe                S2_iPort_v04_2EventHandler00001
+                0x8002a00e                S2_iPort_v04_2EventHandler0000B
+                0x80042258                S2_iPort_v04_2EventHandler00044
+                0x8002cb66                S2_iPort_v04_2EventHandler0001B
+                0x8002bdd8                S2_iPort_v04_2EventHandler00016
+                0x8002d63e                S2_iPort_v04_2EventHandler0001F
+                0x800454da                S2_iPort_v04_2EventHandler00030
+                0x80044e6e                S2_iPort_v04_2EventHandler00026
+                0x8004517a                S2_iPort_v04_2EventHandler0002A
+                0x80029aaa                S2_iPort_v04_2EventHandler00009
+                0x80045460                S2_iPort_v04_2EventHandler0002F
+                0x80040714                S2_iPort_v04_2EventHandler00034
+                0x80028d60                S2_iPort_v04_2EventHandler00004
+                0x8002c08e                S2_iPort_v04_2EventHandler00017
+                0x80040d26                S2_iPort_v04_2EventHandler00035
+                0x8002de60                S2_iPort_v04_2EventHandler00022
+                0x80029d5c                S2_iPort_v04_2EventHandler0000A
+                0x80041a36                S2_iPort_v04_2EventHandler00040
+                0x8003fab2                S2_iPort_v04_2EventHandler00031
+                0x8004132e                S2_iPort_v04_2EventHandler0003E
+                0x8004563c                S2_iPort_v04_2EventHandler00039
+                0x80044f42                S2_iPort_v04_2EventHandler00027
+                0x8004574a                S2_iPort_v04_2EventHandler0003A
+                0x8002b04a                S2_iPort_v04_2EventHandler00011
+                0x8002b86c                S2_iPort_v04_2EventHandler00014
+                0x8002d0d2                S2_iPort_v04_2EventHandler0001D
+                0x800453e4                S2_iPort_v04_2EventHandler0002E
+                0x80044bd0                S2_iPort_v04_2PLAYER_WAIT
+                0x800400a4                S2_iPort_v04_2EventHandler00032
+                0x80044cd2                S2_iPort_v04_2PREV_WAIT
+                0x80045240                S2_iPort_v04_2EventHandler0002B
+                0x80045554                S2_iPort_v04_2EventHandler00036
+                0x80044e24                S2_iPort_v04_2EventHandler00003
+                0x80029294                S2_iPort_v04_2EventHandler00006
+                0x8002a2c0                S2_iPort_v04_2EventHandler0000C
+                0x80045832                S2_iPort_v04_2EventHandler0003D
+                0x8002a572                S2_iPort_v04_2EventHandler0000D
+                0x80041e18                S2_iPort_v04_2EventHandler00041
+                0x80043388                S2_iPort_v04_2_main
+                0x800455a0                S2_iPort_v04_2EventHandler00037
+ .text          0x80045940      0x3c6 S2_Index_Translation_f_x_.o
+                0x80045b3c                S2_Index_Translation_f_x__EventHandler
+                0x80045c0c                S2_Index_Translation_f_x__main
+                0x80045940                S2_Index_Translation_f_x_EventHandler00000
+ *fill*         0x80045d06        0x2
+ .text          0x80045d08     0x5836 library.o
+                0x80049ef4                RotateRightLong
+                0x8004a502                IsSystem
+                0x80049e58                Seed
+                0x80047750                Remove
+                0x80049ad4                Ltoa
+                0x80049800                Atoi
+                0x80048b68                InitRampInfoArray
+                0x8004a2ae                Right
+                0x8004b2de                LockInputSema
+                0x80049d82                Mod
+                0x80049f6a                Getc
+                0x80049cb6                SMuldiv
+                0x8004a4e4                IsHidden
+                0x80049b9a                Min
+                0x8004b0f2                hextosi
+                0x8004a688                WriteIntegerArray
+                0x8004abfe                GetSignedIntArrayElementPtr
+                0x80049522                CheckStructArray
+                0x8004b106                hextosl
+                0x8004a80e                WriteSignedIntegerArray
+                0x800491ea                InitStringParamArray
+                0x800484bc                ReadSignedLongIntegerArray
+                0x800473de                GatherToDelimiter
+                0x8004900e                InitStringArray
+                0x80049b74                Max
+                0x8004a53e                IsReadOnly
+                0x80049c7e                SMax
+                0x80047582                GatherByLength
+                0x80049a0e                Chr
+                0x8004a660                ReadSignedLongInteger
+                0x80049a8c                Itohex
+                0x80049494                GetStructArrayElement
+                0x80049788                UNS_SetByte
+                0x8004a282                ReverseFindi
+                0x80048964                ReadStringArray
+                0x8004aa0e                GetIntArrayElementPtr
+                0x8004a0be                Lower
+                0x80049e74                RotateLeft
+                0x8004b226                ResizeIfAutogrow
+                0x80048c94                CheckInputArray
+                0x80046276                ResizeStringArray
+                0x800499a0                Atosl
+                0x800497c8                High
+                0x80049e24                Rnd
+                0x80049d46                UMod
+                0x80049eca                RotateLeftLong
+                0x8004b352                FindNumericChar
+                0x8004ae56                CheckIOArrayBounds2
+                0x8004a49c                MakeProgramFilename
+                0x80049c9a                SMin
+                0x80049ff2                Left
+                0x80049f34                CheckBufferThreshold
+                0x8004a618                ReadSignedInteger
+                0x800497f2                LowWord
+                0x80045d08                Bit
+                0x8004a5c8                ReadLongInteger
+                0x80049606                Byte
+                0x8004ab06                GetLongArrayElementPtr
+                0x8004a254                ReverseFind
+                0x8004a4b2                GetSeries
+                0x8004b41e                InitTcpServer
+                0x8004a0a6                Len
+                0x8004af26                InitializeRampInfoInternal
+                0x80049bc0                Divide
+                0x8004990c                Atol
+                0x8004a4a8                GetModelNumber
+                0x8004adee                CheckIOArrayBounds
+                0x80048cee                CheckStringInputArray
+                0x8004a8d0                WriteSignedLongIntegerArray
+                0x800493de                GetStringArrayElement
+                0x80049b18                Ltohex
+                0x80049a44                Itoa
+                0x80049e9e                RotateRight
+                0x80047a3e                InternalReverseFind
+                0x8004a5a8                WriteLongInteger
+                0x80048f12                InitDynamicStringStruct
+                0x80048e04                SetStringArray
+                0x8004829a                ReadSignedIntegerArray
+                0x80048d48                SetOutputArray
+                0x8004a558                WriteInteger
+                0x80049372                InitStructDynamicArray
+                0x80047cc8                SetString
+                0x80049dbe                Random
+                0x8004a5f0                WriteSignedInteger
+                0x80045f6c                Find
+                0x8004a4bc                GetProgramNumber
+                0x8004a192                Mid
+                0x8004b390                InitTcpClient
+                0x80046e5a                ResizeStructArray
+                0x8004acf6                GetSignedLongArrayElementPtr
+                0x8004b118                hextol
+                0x800486de                ReadString
+                0x800490a4                InitDynamicStringArray
+                0x8004b1fe                UpperChar
+                0x8004989c                Atosi
+                0x8004a580                ReadInteger
+                0x80049c32                Muldiv
+                0x80048db6                SetStringOutputArray
+                0x8004a994                WriteString
+                0x800468ce                ResizeIntegerArray
+                0x80048c5c                InitInOutArray
+                0x800492b2                InitNvramStringArray
+                0x80049b5c                Abs
+                0x80049d02                SDivide
+                0x80047e58                ReadIntegerArray
+                0x80045e18                CompareStrings
+                0x8004b1d6                LowerChar
+                0x8004b4ae                InitUdpSocket
+                0x80049f1c                ClearBuffer
+                0x8004a36a                Upper
+                0x8004934e                InitStructArray
+                0x8004a440                MakeLower
+                0x8004a520                IsVolume
+                0x800478aa                RemoveByLength
+                0x8004959e                CheckStringOutputArrayIndex
+                0x8004a74a                WriteLongIntegerArray
+                0x8004afd2                InitRampInfoStructArray
+                0x800497e4                HighWord
+                0x800460e0                ResizeString
+                0x8004a4c6                IsDirectory
+                0x80048078                ReadLongIntegerArray
+                0x800497d6                Low
+                0x80047284                Gather
+                0x8004a46e                MakeUpper
+                0x80048ed4                InitStringStruct
+                0x8004aebe                CheckStringArrayBounds
+                0x80049c04                CheckDenominator
+                0x8004b0da                hextoi
+                0x800487fc                WriteStringArray
+                0x800496c6                SetByte
+                0x8004af7c                InitializeRampInfo
+                0x8004b318                UnLockInputSema
+                0x8004a640                WriteSignedLongInteger
+                0x80048fc6                InitNvramStringStruct
+ *fill*         0x8004b53e        0x2
+                0x8004b540                .=ALIGN(0x10)
+ *(.eh_frame)
+                0x8004b540                .=ALIGN(0x10)
+ *(.gnu.linkonce.t.*)
+                0x8004b540                .=ALIGN(0x4)
+                0x8004b540                __CTOR_LIST__=.
+                0x8004b540                ___CTOR_LIST__=.
+                0x8004b540        0x4 LONG 0x0 (((__CTOR_END__-__CTOR_LIST__)/0x4)-0x2)
+ *(.ctors)
+                0x8004b544        0x4 LONG 0x0
+                0x8004b548                __CTOR_END__=.
+                0x8004b548                __DTOR_LIST__=.
+                0x8004b548                ___DTOR_LIST__=.
+                0x8004b548        0x4 LONG 0x0 (((__DTOR_END__-__DTOR_LIST__)/0x4)-0x2)
+ *(.dtors)
+                0x8004b54c        0x4 LONG 0x0
+                0x8004b550                __DTOR_END__=.
+ *(.rodata)
+ .rodata        0x8004b550      0x24f S2_Managed_Power___Input_v1_00.o
+ .rodata        0x8004b79f      0x240 S2_Managed_Power___Input_f_x__v1_00.o
+ .rodata        0x8004b9df      0x6a1 S2_Marantz_AV7702_Processor_v1_0.o
+ .rodata        0x8004c080      0x22f S2_Digital_Edge_Detection_v1_00.o
+ .rodata        0x8004c2af      0x22f S2_Managed_Power_v1_00.o
+ .rodata        0x8004c4de      0xb9c S2_iPort_v04_2.o
+ .rodata        0x8004d07a      0x255 S2_Index_Translation_f_x_.o
+ .rodata        0x8004d2cf      0xc54 library.o
+ *(.gcc_except_table)
+ *fill*         0x8004df23        0x1
+                0x8004df24                .=ALIGN(0x2)
+                0x8004df24                __INIT_SECTION__=.
+                0x8004df24        0x4 LONG 0x4e560000
+ *(.init)
+                0x8004df28        0x2 SHORT 0x4e5e
+                0x8004df2a        0x2 SHORT 0x4e75
+                0x8004df2c                __FINI_SECTION__=.
+                0x8004df2c        0x4 LONG 0x4e560000
+ *(.fini)
+                0x8004df30        0x2 SHORT 0x4e5e
+                0x8004df32        0x2 SHORT 0x4e75
+ *(.lit)
+ *fill*         0x8004df34        0xc
+                0x8004df40                .=ALIGN(0x10)
+                0x8004df40                _etext=.
+                0x8004df40                etext=.
+
+.data           0x8004df40        0x0
+                0x8004df40                copy_start=.
+ *(.shdata)
+ *(.data)
+ *(.gnu.linkonce.d.*)
+                0x8004df40                .=ALIGN(0x10)
+                0x8004df40                _edata=.
+                0x8004df40                copy_end=.
+
+.got
+ *(.got.plt)
+ *(.got)
+
+EntryList       0x8004df40      0x770
+ *(EntryList)
+ EntryList      0x8004df40      0x110 S2_Managed_Power___Input_v1_00.o
+                0x8004df40                S2_Managed_Power___Input_v1_00_Entry
+ EntryList      0x8004e050      0x110 S2_Managed_Power___Input_f_x__v1_00.o
+                0x8004e050                S2_Managed_Power___Input_f_x__v1_00_Entry
+ EntryList      0x8004e160      0x110 S2_Marantz_AV7702_Processor_v1_0.o
+                0x8004e160                S2_Marantz_AV7702_Processor_v1_0_Entry
+ EntryList      0x8004e270      0x110 S2_Digital_Edge_Detection_v1_00.o
+                0x8004e270                S2_Digital_Edge_Detection_v1_00_Entry
+ EntryList      0x8004e380      0x110 S2_Managed_Power_v1_00.o
+                0x8004e380                S2_Managed_Power_v1_00_Entry
+ EntryList      0x8004e490      0x110 S2_iPort_v04_2.o
+                0x8004e490                S2_iPort_v04_2_Entry
+ EntryList      0x8004e5a0      0x110 S2_Index_Translation_f_x_.o
+                0x8004e5a0                S2_Index_Translation_f_x__Entry
+                0x8004e6b0                .=ALIGN(0x4)
+
+FunctionList    0x8004e6b0        0x4
+ *(FunctionList)
+ FunctionList   0x8004e6b0        0x4 globals.o
+                0x8004e6b0                g_pFunctions
+                0x8004e6b4                .=ALIGN(0x4)
+
+.bss            0x8004e6b4        0x0
+                0x8004e6b4                .=ALIGN(0x4)
+                0x8004e6b4                __bss_start=.
+ *(.shbss)
+ *(.bss)
+ *(COMMON)
+                0x8004e6b8                _end=ALIGN(0x8)
+                0x8004e6b8                __end=_end
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges
+ *(.debug_aranges)
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info
+ *(.debug_info)
+
+.debug_abbrev
+ *(.debug_abbrev)
+
+.debug_line
+ *(.debug_line)
+
+.debug_frame
+ *(.debug_frame)
+
+.debug_str
+ *(.debug_str)
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_weaknames
+ *(.debug_weaknames)
+
+.debug_funcnames
+ *(.debug_funcnames)
+
+.debug_typenames
+ *(.debug_typenames)
+
+.debug_varnames
+ *(.debug_varnames)
+LOAD S2_Managed_Power___Input_v1_00.o
+LOAD S2_Managed_Power___Input_f_x__v1_00.o
+LOAD S2_Marantz_AV7702_Processor_v1_0.o
+LOAD S2_Digital_Edge_Detection_v1_00.o
+LOAD S2_Managed_Power_v1_00.o
+LOAD S2_iPort_v04_2.o
+LOAD S2_Index_Translation_f_x_.o
+LOAD globals.o
+LOAD library.o
+OUTPUT(_S2_TAO_17_9_22.spl elf32-m68k)
+
+.comment        0x8004e6b4      0x156
+ .comment       0x8004e6b4       0x26 S2_Managed_Power___Input_v1_00.o
+ .comment       0x8004e6da       0x26 S2_Managed_Power___Input_f_x__v1_00.o
+ .comment       0x8004e700       0x26 S2_Marantz_AV7702_Processor_v1_0.o
+ .comment       0x8004e726       0x26 S2_Digital_Edge_Detection_v1_00.o
+ .comment       0x8004e74c       0x26 S2_Managed_Power_v1_00.o
+ .comment       0x8004e772       0x26 S2_iPort_v04_2.o
+ .comment       0x8004e798       0x26 S2_Index_Translation_f_x_.o
+ .comment       0x8004e7be       0x26 globals.o
+ .comment       0x8004e7e4       0x26 library.o
